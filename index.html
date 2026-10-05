@@ -57,7 +57,7 @@
           <div class="text-2xl text-slate-400">📄</div>
           <div>
             <p class="text-sm font-semibold text-slate-800">Upload Live Stock Report</p>
-            <p class="text-xs text-slate-500">Morning dump = Opening | Later dumps = Temporary Closing</p>
+            <p class="text-xs text-slate-500">Morning dump = Opening | Later dumps of same day = Temporary Closing</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -146,7 +146,7 @@
             <div>
               <div class="flex items-center gap-2">
                 <span id="closingTitle" class="text-xs font-bold uppercase tracking-wider text-emerald-600">Closing Stock</span>
-                <span id="closingStatusBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-100 text-amber-800">Temporary</span>
+                <span id="closingStatusBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-100 text-emerald-800">Finalized</span>
               </div>
               <p id="closingDateSub" class="text-xs text-slate-400 mt-0.5">Finalized</p>
             </div>
@@ -218,11 +218,11 @@
 
   <!-- Manage Uploads Modal -->
   <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Dates</h3>
-          <p class="text-xs text-slate-500">Remove accidental files or clear specific snapshot records</p>
+          <p class="text-xs text-slate-500">Remove accidental files or reset specific snapshot records</p>
         </div>
         <button id="btnCloseManage" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
       </div>
@@ -322,7 +322,7 @@
       counters: {}
     };
     let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING"];
-    let selectedCounter = "CHAIN";
+    let selectedCounter = "ALL";
     let allDayRecords = [];
 
     // --- Initialize Application ---
@@ -497,6 +497,7 @@
           let alertMsg = "";
 
           if (!dayRecord || !dayRecord.opening) {
+            // First file uploaded for this date = OPENING STOCK
             dayRecord = {
               date: fileDate,
               opening: {
@@ -508,29 +509,8 @@
               isTemporaryClosing: dayRecord ? dayRecord.isTemporaryClosing : false
             };
             alertMsg = `Saved ${fileDate} as OPENING stock (${fileTime}).`;
-
-            const allDays = await getAllDayRecords();
-            const sortedDates = allDays.map(d => d.date).sort((a,b) => {
-              const [d1, m1, y1] = a.split("-").map(Number);
-              const [d2, m2, y2] = b.split("-").map(Number);
-              return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
-            });
-            const prevIndex = sortedDates.indexOf(fileDate) - 1;
-            if (prevIndex >= 0) {
-              const prevDateStr = sortedDates[prevIndex];
-              const prevDayRecord = await getDayRecord(prevDateStr);
-              if (prevDayRecord) {
-                prevDayRecord.closing = {
-                  time: `${fileDate} morning (${fileTime})`,
-                  fileName: file.name,
-                  counters: counterAggregates
-                };
-                prevDayRecord.isTemporaryClosing = false;
-                await saveDayRecord(prevDayRecord);
-              }
-            }
-
           } else {
+            // Subsequent file uploaded on the SAME date = TEMPORARY CLOSING
             dayRecord.closing = {
               time: fileTime,
               fileName: file.name,
@@ -553,14 +533,17 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- Helper to parse DD-MM-YYYY into a comparable Date ---
+    function parseDateStr(str) {
+      const parts = str.split("-").map(Number);
+      return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+
     // --- Refresh Day Dropdown ---
     async function refreshDayList() {
       allDayRecords = await getAllDayRecords();
-      allDayRecords.sort((a, b) => {
-        const [d1, m1, y1] = a.date.split("-").map(Number);
-        const [d2, m2, y2] = b.date.split("-").map(Number);
-        return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
-      });
+      // Sort strictly chronologically: Oldest first -> Newest last
+      allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
 
       const select = document.getElementById("dateSelect");
       const currentSelected = select.value;
@@ -586,6 +569,42 @@
       renderDashboard();
     }
 
+    // --- Dynamic Closing Resolver ---
+    // Resolves closing for any selected day:
+    // If next chronological day exists -> Closing is NEXT DAY's OPENING (Finalized)
+    // If no next day exists (today) -> Closing is today's temporary closing (if any), or Pending
+    function getResolvedDayStock(selectedDate) {
+      const idx = allDayRecords.findIndex(d => d.date === selectedDate);
+      if (idx === -1) return null;
+
+      const currentDay = allDayRecords[idx];
+      const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
+
+      let closingData = null;
+      let closingType = "none"; // 'finalized' | 'temporary' | 'none'
+      let closingTimeLabel = "";
+
+      if (nextDay && nextDay.opening) {
+        // Next day's opening dump permanently closes out this day!
+        closingData = nextDay.opening.counters;
+        closingType = "finalized";
+        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time})`;
+      } else if (currentDay.closing) {
+        // No next day yet, but user uploaded a midday/evening file today
+        closingData = currentDay.closing.counters;
+        closingType = "temporary";
+        closingTimeLabel = `As of ${currentDay.closing.time}`;
+      }
+
+      return {
+        date: currentDay.date,
+        opening: currentDay.opening,
+        closingCounters: closingData,
+        closingType: closingType,
+        closingTimeLabel: closingTimeLabel
+      };
+    }
+
     // --- Dashboard Renderer ---
     function renderDashboard() {
       const selectedDate = document.getElementById("dateSelect").value;
@@ -594,18 +613,17 @@
         return;
       }
 
-      const dayRecord = allDayRecords.find(d => d.date === selectedDate);
-      if (!dayRecord) {
+      const resolved = getResolvedDayStock(selectedDate);
+      if (!resolved) {
         resetDashboard();
         return;
       }
 
-      const hasOpening = !!dayRecord.opening;
-      const hasClosing = !!dayRecord.closing;
-      const isTemp = dayRecord.isTemporaryClosing;
+      const hasOpening = !!resolved.opening;
+      const hasClosing = resolved.closingType !== "none";
 
       document.getElementById("openingDateSub").textContent = hasOpening 
-        ? `${dayRecord.opening.time}` 
+        ? `${resolved.opening.time}` 
         : "Not Recorded";
 
       const badge = document.getElementById("closingStatusBadge");
@@ -613,20 +631,19 @@
       const closingTitle = document.getElementById("closingTitle");
 
       if (hasClosing) {
-        if (isTemp) {
+        badge.classList.remove("hidden");
+        if (resolved.closingType === "temporary") {
           badge.textContent = "Temporary";
           badge.className = "text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-100 text-amber-800";
-          badge.classList.remove("hidden");
           closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
           closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
-          document.getElementById("closingDateSub").textContent = `As of ${dayRecord.closing.time}`;
+          document.getElementById("closingDateSub").textContent = resolved.closingTimeLabel;
         } else {
           badge.textContent = "Finalized";
           badge.className = "text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-100 text-emerald-800";
-          badge.classList.remove("hidden");
           closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
           closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
-          document.getElementById("closingDateSub").textContent = `Final Closing`;
+          document.getElementById("closingDateSub").textContent = resolved.closingTimeLabel;
         }
       } else {
         badge.classList.add("hidden");
@@ -642,12 +659,12 @@
       document.getElementById("closeExtra").classList.toggle("hidden", !showGross && !showVal);
       document.getElementById("diffExtra").classList.toggle("hidden", !showGross && !showVal);
 
-      const openData = (hasOpening && dayRecord.opening.counters[selectedCounter]) 
-        ? dayRecord.opening.counters[selectedCounter] 
+      const openData = (hasOpening && resolved.opening.counters[selectedCounter]) 
+        ? resolved.opening.counters[selectedCounter] 
         : { qty: 0, gross: 0, value: 0, categories: {} };
 
-      const closeData = (hasClosing && dayRecord.closing.counters[selectedCounter]) 
-        ? dayRecord.closing.counters[selectedCounter] 
+      const closeData = (hasClosing && resolved.closingCounters[selectedCounter]) 
+        ? resolved.closingCounters[selectedCounter] 
         : null;
 
       // 1. OPENING CARD
@@ -754,15 +771,16 @@
         return;
       }
 
-      // Display in descending order (latest dates first)
+      // Display descending (latest dates first)
       const reversedRecords = [...allDayRecords].reverse();
 
       reversedRecords.forEach(day => {
         const item = document.createElement("div");
         item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
 
+        const resolved = getResolvedDayStock(day.date);
         const hasOpening = !!day.opening;
-        const hasClosing = !!day.closing;
+        const hasClosing = resolved && resolved.closingType !== "none";
 
         item.innerHTML = `
           <div class="space-y-1">
@@ -770,21 +788,21 @@
               <span class="font-bold text-slate-900 text-sm">${day.date}</span>
               <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${
                 hasClosing 
-                  ? (day.isTemporaryClosing ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') 
+                  ? (resolved.closingType === 'temporary' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') 
                   : 'bg-blue-100 text-blue-800'
               }">
-                ${hasClosing ? (day.isTemporaryClosing ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
+                ${hasClosing ? (resolved.closingType === 'temporary' ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
               </span>
             </div>
             <div class="text-xs text-slate-500 space-y-0.5">
               <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${day.opening.time} (${day.opening.fileName})` : 'None'}</span></p>
-              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? `${day.closing.time} (${day.closing.fileName})` : 'Pending'}</span></p>
+              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : 'Pending'}</span></p>
             </div>
           </div>
           <div class="flex items-center gap-2 self-end md:self-center">
-            ${hasClosing ? `
+            ${day.closing ? `
               <button onclick="handleClearClosing('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors">
-                Clear Closing
+                Clear Temporary Closing
               </button>
             ` : ''}
             <button onclick="handleDeleteDay('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors">
@@ -798,7 +816,7 @@
 
     // --- Targeted Deletion Handlers ---
     window.handleClearClosing = async function(dateStr) {
-      if (!confirm(`Are you sure you want to remove the CLOSING stock for ${dateStr}? It will return to 'Pending'.`)) return;
+      if (!confirm(`Are you sure you want to remove the temporary closing upload for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
       if (rec) {
         rec.closing = null;
