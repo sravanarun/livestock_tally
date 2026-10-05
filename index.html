@@ -57,7 +57,7 @@
           <div class="text-2xl text-slate-400">📄</div>
           <div>
             <p class="text-sm font-semibold text-slate-800">Upload Live Stock Report</p>
-            <p class="text-xs text-slate-500">Morning dump = Opening | Later dumps of same day = Temporary Closing</p>
+            <p class="text-xs text-slate-500">Morning dump = Opening | Later dumps = Temporary Closing</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -189,7 +189,7 @@
 
       <!-- DYNAMIC DETAIL SECTION: STANDARD TABLE OR COINS SPECIAL VIEW -->
       <div id="detailSectionContainer">
-        <!-- Rendered dynamically depending on selectedCounter -->
+        <!-- Rendered dynamically -->
       </div>
     </div>
   </main>
@@ -223,7 +223,7 @@
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 3; // Version upgraded with Bangle sets & Coin weight tables
+    const DB_VERSION = 3;
     let db;
 
     function openDatabase() {
@@ -400,6 +400,7 @@
           const firstSheetName = workbook.SheetNames[0];
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
 
+          // Extract date and time from filename
           const dateMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{4})/);
           const timeMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{2}\s*[AP]M)/i);
 
@@ -418,10 +419,10 @@
             counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
           });
 
-          // Special containers for Coins
+          // Dedicated Coin Containers
           const coinData = {
-            gold: {},   // unitWeight -> qty
-            silver: {}  // unitWeight -> qty
+            gold: {},   // weight -> qty
+            silver: {}  // weight -> qty
           };
 
           rows.forEach(row => {
@@ -437,10 +438,11 @@
             const finalCat = mapping.categories[origCat] || origCat;
             const combinedKey = finalGroup + finalCat;
 
+            // Resolve Counter
             let counter = mapping.counters[combinedKey];
             if (!counter) {
-              if (finalCat === "COINS") counter = "COIN";
-              else if (finalCat === "BANGLES") counter = "BANGLE";
+              if (finalCat === "COINS" || origCat === "COINS") counter = "COIN";
+              else if (finalCat === "BANGLES" || origCat === "BANGLES") counter = "BANGLE";
               else if (finalCat === "FINGER RING" || finalCat === "BRACELET") counter = "RING";
               else if (finalCat === "CHAIN" || finalCat === "PENDANT") counter = "CHAIN";
               else if (finalCat === "STUD EARRING" || finalCat === "DROP EARRING") counter = "EARRING";
@@ -452,9 +454,9 @@
             const val = Number(row["Final Price - Pre Tax Value"] || 0);
             const unitWeight = Number(row["Unit Weight"] || 0);
 
-            // Logic 1: BANGLE counter breakdown by set (11th character of Item Code)
+            // 1. BANGLE BREAKDOWN BY SET (11th character: index 10)
             let categoryDisplayKey = finalCat;
-            if (counter === "BANGLE") {
+            if (counter === "BANGLE" || finalCat === "BANGLES" || origCat === "BANGLES") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
               if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
               else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
@@ -463,10 +465,11 @@
               else categoryDisplayKey = "Other Bangles";
             }
 
-            // Logic 2: COIN weights breakdown (Gold vs Silver)
-            if (counter === "COIN") {
+            // 2. COINS BREAKDOWN BY METAL & WEIGHT
+            if (counter === "COIN" || finalCat === "COINS" || origCat === "COINS") {
+              // 12th char (index 11): 'A' = Silver, 'W'/'S' = Gold
               const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
-              const isSilver = (coinKaratChar === "A") || (finalGroup === "Silver Coins");
+              const isSilver = (coinKaratChar === "A") || (finalGroup === "Silver Coins") || (origGroup.toLowerCase().includes("silver"));
               const targetDict = isSilver ? coinData.silver : coinData.gold;
               targetDict[unitWeight] = (targetDict[unitWeight] || 0) + qty;
             }
@@ -501,13 +504,20 @@
             counterAggregates["ALL"].categories[allCatKey].value += val;
           });
 
-          // Save Coin specific breakdown into counterAggregates["COIN"]
+          // Attach coin breakdown
+          if (!counterAggregates["COIN"]) {
+            counterAggregates["COIN"] = { qty: 0, gross: 0, value: 0, categories: {} };
+          }
           counterAggregates["COIN"].coinBreakdown = coinData;
 
           let dayRecord = await getDayRecord(fileDate);
           let alertMsg = "";
 
-          if (!dayRecord || !dayRecord.opening) {
+          // Decide whether morning file or closing file
+          // If no record exists OR if user re-uploads morning file (before 12 PM or explicitly first upload)
+          const isMorningFile = fileTime.toLowerCase().includes("am") || !dayRecord;
+
+          if (isMorningFile || !dayRecord || !dayRecord.opening) {
             dayRecord = {
               date: fileDate,
               opening: {
@@ -708,7 +718,7 @@
         document.getElementById("diffVal").textContent = "—";
       }
 
-      // 3. RENDER DETAIL SECTION (COIN SPECIAL VIEW VS STANDARD VIEW)
+      // 3. RENDER DETAIL SECTION
       const container = document.getElementById("detailSectionContainer");
       if (selectedCounter === "COIN") {
         renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
@@ -717,7 +727,6 @@
       }
     }
 
-    // --- Detail Section: Standard Table (Works for Chains, Rings, Bangles Set-Breakdown) ---
     function renderStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
       const allCatKeys = Array.from(new Set([
         ...Object.keys(openData.categories || {}),
@@ -786,12 +795,10 @@
       `;
     }
 
-    // --- Detail Section: Special Coins View (Gold Coins & Silver Coins Side-by-Side) ---
     function renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
       const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
       const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
 
-      // Helper function to build table rows for Coins by Unit Weight
       function buildCoinRows(metalKey) {
         const oDict = openCoins[metalKey] || {};
         const cDict = (hasClosing && closeData) ? (closeCoins[metalKey] || {}) : null;
@@ -827,7 +834,6 @@
           `;
         });
 
-        // Total Row
         const totalDiff = totalClose - totalOpen;
         html += `
           <tr class="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
@@ -979,7 +985,6 @@
       renderManageList();
     };
 
-    // --- Stock Book Copy Action ---
     window.copyCurrentBreakdown = function(date) {
       let clipboardText = `Date: ${date} | Counter: ${selectedCounter}\n`;
       if (selectedCounter === "COIN") {
