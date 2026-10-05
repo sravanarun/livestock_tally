@@ -187,31 +187,9 @@
         </div>
       </div>
 
-      <!-- Item Category Detail Breakdown Table -->
-      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 class="text-sm font-bold text-slate-800">Category Breakdown</h2>
-          <button id="btnCopyReport" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all">
-            📋 Copy for Stock Book
-          </button>
-        </div>
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold border-b border-slate-200">
-              <tr>
-                <th class="px-5 py-3">Category</th>
-                <th class="px-5 py-3 text-right">Opening (Pcs)</th>
-                <th class="px-5 py-3 text-right">Closing (Pcs)</th>
-                <th class="px-5 py-3 text-right">Net Change</th>
-              </tr>
-            </thead>
-            <tbody id="breakdownTbody" class="divide-y divide-slate-100">
-              <tr>
-                <td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">No records available</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- DYNAMIC DETAIL SECTION: STANDARD TABLE OR COINS SPECIAL VIEW -->
+      <div id="detailSectionContainer">
+        <!-- Rendered dynamically depending on selectedCounter -->
       </div>
     </div>
   </main>
@@ -245,7 +223,7 @@
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 2;
+    const DB_VERSION = 3; // Version upgraded with Bangle sets & Coin weight tables
     let db;
 
     function openDatabase() {
@@ -440,7 +418,14 @@
             counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
           });
 
+          // Special containers for Coins
+          const coinData = {
+            gold: {},   // unitWeight -> qty
+            silver: {}  // unitWeight -> qty
+          };
+
           rows.forEach(row => {
+            const itemCode = String(row["Item Code"] || "").trim();
             const origGroup = String(row["Product Group Description"] || "").trim();
             const origCat = String(row["Product Category Description"] || "").trim();
             const binCode = String(row["Bin Code"] || "").trim();
@@ -465,6 +450,26 @@
             const qty = Number(row["Quantity"] || 1);
             const gross = Number(row["Gross Weight"] || 0);
             const val = Number(row["Final Price - Pre Tax Value"] || 0);
+            const unitWeight = Number(row["Unit Weight"] || 0);
+
+            // Logic 1: BANGLE counter breakdown by set (11th character of Item Code)
+            let categoryDisplayKey = finalCat;
+            if (counter === "BANGLE") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
+              else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
+              else if (setChar === "4") categoryDisplayKey = "Set 4 (Set of 4)";
+              else if (setChar) categoryDisplayKey = `Set ${setChar}`;
+              else categoryDisplayKey = "Other Bangles";
+            }
+
+            // Logic 2: COIN weights breakdown (Gold vs Silver)
+            if (counter === "COIN") {
+              const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
+              const isSilver = (coinKaratChar === "A") || (finalGroup === "Silver Coins");
+              const targetDict = isSilver ? coinData.silver : coinData.gold;
+              targetDict[unitWeight] = (targetDict[unitWeight] || 0) + qty;
+            }
 
             if (!counterAggregates[counter]) {
               counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
@@ -474,30 +479,35 @@
             counterAggregates[counter].gross += gross;
             counterAggregates[counter].value += val;
 
-            if (!counterAggregates[counter].categories[finalCat]) {
-              counterAggregates[counter].categories[finalCat] = { qty: 0, gross: 0, value: 0 };
+            if (!counterAggregates[counter].categories[categoryDisplayKey]) {
+              counterAggregates[counter].categories[categoryDisplayKey] = { qty: 0, gross: 0, value: 0 };
             }
-            counterAggregates[counter].categories[finalCat].qty += qty;
-            counterAggregates[counter].categories[finalCat].gross += gross;
-            counterAggregates[counter].categories[finalCat].value += val;
+            counterAggregates[counter].categories[categoryDisplayKey].qty += qty;
+            counterAggregates[counter].categories[categoryDisplayKey].gross += gross;
+            counterAggregates[counter].categories[categoryDisplayKey].value += val;
 
+            // ALL aggregate
             counterAggregates["ALL"].qty += qty;
             counterAggregates["ALL"].gross += gross;
             counterAggregates["ALL"].value += val;
 
-            if (!counterAggregates["ALL"].categories[finalCat]) {
-              counterAggregates["ALL"].categories[finalCat] = { qty: 0, gross: 0, value: 0 };
+            // In ALL, bangles are grouped under regular BANGLES
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : categoryDisplayKey;
+            if (!counterAggregates["ALL"].categories[allCatKey]) {
+              counterAggregates["ALL"].categories[allCatKey] = { qty: 0, gross: 0, value: 0 };
             }
-            counterAggregates["ALL"].categories[finalCat].qty += qty;
-            counterAggregates["ALL"].categories[finalCat].gross += gross;
-            counterAggregates["ALL"].categories[finalCat].value += val;
+            counterAggregates["ALL"].categories[allCatKey].qty += qty;
+            counterAggregates["ALL"].categories[allCatKey].gross += gross;
+            counterAggregates["ALL"].categories[allCatKey].value += val;
           });
+
+          // Save Coin specific breakdown into counterAggregates["COIN"]
+          counterAggregates["COIN"].coinBreakdown = coinData;
 
           let dayRecord = await getDayRecord(fileDate);
           let alertMsg = "";
 
           if (!dayRecord || !dayRecord.opening) {
-            // First file uploaded for this date = OPENING STOCK
             dayRecord = {
               date: fileDate,
               opening: {
@@ -510,7 +520,6 @@
             };
             alertMsg = `Saved ${fileDate} as OPENING stock (${fileTime}).`;
           } else {
-            // Subsequent file uploaded on the SAME date = TEMPORARY CLOSING
             dayRecord.closing = {
               time: fileTime,
               fileName: file.name,
@@ -533,16 +542,13 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- Helper to parse DD-MM-YYYY into a comparable Date ---
     function parseDateStr(str) {
       const parts = str.split("-").map(Number);
       return new Date(parts[2], parts[1] - 1, parts[0]);
     }
 
-    // --- Refresh Day Dropdown ---
     async function refreshDayList() {
       allDayRecords = await getAllDayRecords();
-      // Sort strictly chronologically: Oldest first -> Newest last
       allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
 
       const select = document.getElementById("dateSelect");
@@ -569,10 +575,6 @@
       renderDashboard();
     }
 
-    // --- Dynamic Closing Resolver ---
-    // Resolves closing for any selected day:
-    // If next chronological day exists -> Closing is NEXT DAY's OPENING (Finalized)
-    // If no next day exists (today) -> Closing is today's temporary closing (if any), or Pending
     function getResolvedDayStock(selectedDate) {
       const idx = allDayRecords.findIndex(d => d.date === selectedDate);
       if (idx === -1) return null;
@@ -581,16 +583,14 @@
       const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
 
       let closingData = null;
-      let closingType = "none"; // 'finalized' | 'temporary' | 'none'
+      let closingType = "none";
       let closingTimeLabel = "";
 
       if (nextDay && nextDay.opening) {
-        // Next day's opening dump permanently closes out this day!
         closingData = nextDay.opening.counters;
         closingType = "finalized";
         closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time})`;
       } else if (currentDay.closing) {
-        // No next day yet, but user uploaded a midday/evening file today
         closingData = currentDay.closing.counters;
         closingType = "temporary";
         closingTimeLabel = `As of ${currentDay.closing.time}`;
@@ -605,7 +605,6 @@
       };
     }
 
-    // --- Dashboard Renderer ---
     function renderDashboard() {
       const selectedDate = document.getElementById("dateSelect").value;
       if (!selectedDate || allDayRecords.length === 0) {
@@ -709,47 +708,195 @@
         document.getElementById("diffVal").textContent = "—";
       }
 
-      // 3. CATEGORY BREAKDOWN TABLE
-      const tbody = document.getElementById("breakdownTbody");
-      tbody.innerHTML = "";
+      // 3. RENDER DETAIL SECTION (COIN SPECIAL VIEW VS STANDARD VIEW)
+      const container = document.getElementById("detailSectionContainer");
+      if (selectedCounter === "COIN") {
+        renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
+      } else {
+        renderStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
+      }
+    }
 
+    // --- Detail Section: Standard Table (Works for Chains, Rings, Bangles Set-Breakdown) ---
+    function renderStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
       const allCatKeys = Array.from(new Set([
         ...Object.keys(openData.categories || {}),
         ...(closeData ? Object.keys(closeData.categories || {}) : [])
       ])).sort();
 
+      const sectionTitle = selectedCounter === "BANGLE" ? "Bangles Breakdown by Set (Single / Pair / Set of 4)" : "Category Breakdown";
+
+      let rowsHtml = "";
       if (allCatKeys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
-        return;
+        rowsHtml = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
+      } else {
+        allCatKeys.forEach(cat => {
+          const oQ = openData.categories[cat] ? openData.categories[cat].qty : 0;
+          const cQ = closeData && closeData.categories[cat] ? closeData.categories[cat].qty : null;
+
+          if (cQ !== null) {
+            const dQ = cQ - oQ;
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
+                <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${cQ}</td>
+                <td class="px-5 py-3 text-right font-semibold ${dQ > 0 ? 'text-emerald-600' : dQ < 0 ? 'text-rose-600' : 'text-slate-500'}">
+                  ${hasOpening ? (dQ > 0 ? `+${dQ}` : dQ) : "—"}
+                </td>
+              </tr>
+            `;
+          } else {
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
+                <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
+                <td class="px-5 py-3 text-right text-slate-400 italic">Pending</td>
+                <td class="px-5 py-3 text-right text-slate-400 italic">—</td>
+              </tr>
+            `;
+          }
+        });
       }
 
-      allCatKeys.forEach(cat => {
-        const oQ = openData.categories[cat] ? openData.categories[cat].qty : 0;
-        const cQ = closeData && closeData.categories[cat] ? closeData.categories[cat].qty : null;
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-800">${sectionTitle}</h2>
+            <button onclick="copyCurrentBreakdown('${selectedDate}')" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all">
+              📋 Copy for Stock Book
+            </button>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-sm" id="breakdownTable">
+              <thead class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="px-5 py-3">${selectedCounter === "BANGLE" ? "Bangle Set" : "Category"}</th>
+                  <th class="px-5 py-3 text-right">Opening (Pcs)</th>
+                  <th class="px-5 py-3 text-right">Closing (Pcs)</th>
+                  <th class="px-5 py-3 text-right">Net Change</th>
+                </tr>
+              </thead>
+              <tbody id="breakdownTbody" class="divide-y divide-slate-100">
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
 
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50 transition-colors";
+    // --- Detail Section: Special Coins View (Gold Coins & Silver Coins Side-by-Side) ---
+    function renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
+      const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
+      const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
 
-        if (cQ !== null) {
-          const dQ = cQ - oQ;
-          tr.innerHTML = `
-            <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
-            <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
-            <td class="px-5 py-3 text-right text-slate-600">${cQ}</td>
-            <td class="px-5 py-3 text-right font-semibold ${dQ > 0 ? 'text-emerald-600' : dQ < 0 ? 'text-rose-600' : 'text-slate-500'}">
-              ${hasOpening ? (dQ > 0 ? `+${dQ}` : dQ) : "—"}
-            </td>
-          `;
-        } else {
-          tr.innerHTML = `
-            <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
-            <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
-            <td class="px-5 py-3 text-right text-slate-400 italic">Pending</td>
-            <td class="px-5 py-3 text-right text-slate-400 italic">—</td>
-          `;
+      // Helper function to build table rows for Coins by Unit Weight
+      function buildCoinRows(metalKey) {
+        const oDict = openCoins[metalKey] || {};
+        const cDict = (hasClosing && closeData) ? (closeCoins[metalKey] || {}) : null;
+
+        const allWeights = Array.from(new Set([
+          ...Object.keys(oDict),
+          ...(cDict ? Object.keys(cDict) : [])
+        ])).map(Number).sort((a,b) => a - b);
+
+        if (allWeights.length === 0) {
+          return `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400 text-xs">No coins found</td></tr>`;
         }
-        tbody.appendChild(tr);
-      });
+
+        let html = "";
+        let totalOpen = 0;
+        let totalClose = 0;
+
+        allWeights.forEach(wt => {
+          const oQ = oDict[wt] || 0;
+          const cQ = cDict ? (cDict[wt] || 0) : null;
+          totalOpen += oQ;
+          if (cQ !== null) totalClose += cQ;
+
+          html += `
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-2.5 font-bold text-slate-800">${wt} g</td>
+              <td class="px-4 py-2.5 text-right font-medium text-slate-700">${hasOpening ? oQ : "—"}</td>
+              <td class="px-4 py-2.5 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
+              <td class="px-4 py-2.5 text-right font-semibold ${cQ !== null ? (cQ - oQ > 0 ? 'text-emerald-600' : cQ - oQ < 0 ? 'text-rose-600' : 'text-slate-500') : 'text-slate-400'}">
+                ${cQ !== null ? ((cQ - oQ > 0 ? `+${cQ - oQ}` : `${cQ - oQ}`)) : "—"}
+              </td>
+            </tr>
+          `;
+        });
+
+        // Total Row
+        const totalDiff = totalClose - totalOpen;
+        html += `
+          <tr class="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
+            <td class="px-4 py-2.5">Total Coins</td>
+            <td class="px-4 py-2.5 text-right">${hasOpening ? totalOpen : "—"}</td>
+            <td class="px-4 py-2.5 text-right">${hasClosing && closeData ? totalClose : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
+            <td class="px-4 py-2.5 text-right ${hasClosing && closeData ? (totalDiff > 0 ? 'text-emerald-600' : totalDiff < 0 ? 'text-rose-600' : 'text-slate-700') : 'text-slate-400'}">
+              ${hasClosing && closeData ? (totalDiff > 0 ? `+${totalDiff}` : totalDiff) : "—"}
+            </td>
+          </tr>
+        `;
+
+        return html;
+      }
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown (Pcs by Gram Weight)</h2>
+            <button onclick="copyCurrentBreakdown('${selectedDate}')" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all">
+              📋 Copy for Stock Book
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Gold Coins Table -->
+            <div class="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-amber-500 text-white flex items-center justify-between">
+                <span class="font-bold text-xs uppercase tracking-wider">🟡 Gold Coins (24K - W / S)</span>
+                <span class="text-[10px] bg-amber-600 px-2 py-0.5 rounded font-semibold">Tally View</span>
+              </div>
+              <table class="w-full text-left text-xs" id="goldCoinsTable">
+                <thead class="bg-amber-50 text-amber-900 font-semibold border-b border-amber-200">
+                  <tr>
+                    <th class="px-4 py-2.5">Weight (g)</th>
+                    <th class="px-4 py-2.5 text-right">Opening</th>
+                    <th class="px-4 py-2.5 text-right">Closing</th>
+                    <th class="px-4 py-2.5 text-right">Change</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${buildCoinRows("gold")}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Silver Coins Table -->
+            <div class="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-slate-700 text-white flex items-center justify-between">
+                <span class="font-bold text-xs uppercase tracking-wider">⚪ Silver Coins (A)</span>
+                <span class="text-[10px] bg-slate-600 px-2 py-0.5 rounded font-semibold">Tally View</span>
+              </div>
+              <table class="w-full text-left text-xs" id="silverCoinsTable">
+                <thead class="bg-slate-100 text-slate-800 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-2.5">Weight (g)</th>
+                    <th class="px-4 py-2.5 text-right">Opening</th>
+                    <th class="px-4 py-2.5 text-right">Closing</th>
+                    <th class="px-4 py-2.5 text-right">Change</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${buildCoinRows("silver")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function resetDashboard() {
@@ -758,7 +905,7 @@
       document.getElementById("diffQty").textContent = "0";
       document.getElementById("closingDateSub").textContent = "—";
       document.getElementById("openingDateSub").textContent = "—";
-      document.getElementById("breakdownTbody").innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Upload a file to begin</td></tr>`;
+      document.getElementById("detailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a file to begin</div>`;
     }
 
     // --- Render Upload Management List ---
@@ -771,7 +918,6 @@
         return;
       }
 
-      // Display descending (latest dates first)
       const reversedRecords = [...allDayRecords].reverse();
 
       reversedRecords.forEach(day => {
@@ -814,7 +960,6 @@
       });
     }
 
-    // --- Targeted Deletion Handlers ---
     window.handleClearClosing = async function(dateStr) {
       if (!confirm(`Are you sure you want to remove the temporary closing upload for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
@@ -832,6 +977,33 @@
       await deleteDayRecord(dateStr);
       await refreshDayList();
       renderManageList();
+    };
+
+    // --- Stock Book Copy Action ---
+    window.copyCurrentBreakdown = function(date) {
+      let clipboardText = `Date: ${date} | Counter: ${selectedCounter}\n`;
+      if (selectedCounter === "COIN") {
+        clipboardText += `\n[GOLD COINS]\nWeight\tOpening\tClosing\tChange\n`;
+        const gRows = Array.from(document.querySelectorAll("#goldCoinsTable tbody tr"));
+        gRows.forEach(r => {
+          clipboardText += Array.from(r.querySelectorAll("td")).map(c => c.textContent.trim()).join("\t") + "\n";
+        });
+        clipboardText += `\n[SILVER COINS]\nWeight\tOpening\tClosing\tChange\n`;
+        const sRows = Array.from(document.querySelectorAll("#silverCoinsTable tbody tr"));
+        sRows.forEach(r => {
+          clipboardText += Array.from(r.querySelectorAll("td")).map(c => c.textContent.trim()).join("\t") + "\n";
+        });
+      } else {
+        clipboardText += `Category\tOpening\tClosing\tChange\n`;
+        const rows = Array.from(document.querySelectorAll("#breakdownTable tbody tr"));
+        rows.forEach(r => {
+          clipboardText += Array.from(r.querySelectorAll("td")).map(c => c.textContent.trim()).join("\t") + "\n";
+        });
+      }
+
+      navigator.clipboard.writeText(clipboardText).then(() => {
+        alert("Copied stock breakdown to clipboard!");
+      });
     };
 
     // --- Event Listeners ---
@@ -862,7 +1034,6 @@
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
-      // Manage Uploads Modal Handlers
       document.getElementById("btnOpenManage").addEventListener("click", () => {
         renderManageList();
         document.getElementById("manageModal").classList.remove("hidden");
@@ -882,7 +1053,6 @@
         }
       });
 
-      // Backup Download Action
       document.getElementById("btnBackup").addEventListener("click", () => {
         if (allDayRecords.length === 0) return alert("No history to backup yet.");
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allDayRecords, null, 2));
@@ -894,7 +1064,6 @@
         dl.remove();
       });
 
-      // Backup Restore Action
       document.getElementById("restoreInput").addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -913,20 +1082,6 @@
           }
         };
         reader.readAsText(file);
-      });
-
-      // Copy for Stock Book
-      document.getElementById("btnCopyReport").addEventListener("click", () => {
-        const date = document.getElementById("dateSelect").value;
-        const rows = Array.from(document.querySelectorAll("#breakdownTbody tr"));
-        let clipboardText = `Date: ${date} | Counter: ${selectedCounter}\nCategory\tOpening\tClosing\tChange\n`;
-        rows.forEach(r => {
-          const cols = Array.from(r.querySelectorAll("td")).map(c => c.textContent.trim());
-          if (cols.length === 4) clipboardText += cols.join("\t") + "\n";
-        });
-        navigator.clipboard.writeText(clipboardText).then(() => {
-          alert("Copied breakdown table to clipboard!");
-        });
       });
     }
   </script>
