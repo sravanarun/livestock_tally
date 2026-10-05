@@ -399,13 +399,13 @@
 
     // --- State Variables ---
     let mapping = { groups: {}, categories: {}, counters: {} };
-    let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING"];
+    // Explicitly add GEP and TEP to available counters list
+    let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING", "GEP", "TEP"];
     let selectedCounter = "BANGLE";
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
     let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {} };
 
-    // --- Helper to safely get quantity regardless of whether category was stored as number or object ---
     function getSafeQty(catData) {
       if (catData === undefined || catData === null) return 0;
       if (typeof catData === "number") return catData;
@@ -462,6 +462,9 @@
             mapping.counters[combined] = counter;
             counterSet.add(counter);
           });
+          // Ensure GEP and TEP are present
+          counterSet.add("GEP");
+          counterSet.add("TEP");
           availableCounters = Array.from(counterSet);
         }
 
@@ -509,11 +512,17 @@
       return null;
     }
 
+    // Explicit Priority Routing for GEP and TEP Bins
     function resolveCounter(origGroup, origCat, binCode) {
-      let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
-      if (binCode === "GEP") finalGroup = "GEP";
-      if (binCode === "TEP") finalGroup = "TEP";
+      const cleanBin = String(binCode || "").trim().toUpperCase();
+      if (cleanBin === "GEP") {
+        return { counter: "GEP", finalGroup: "GEP", finalCat: origCat || "OTHERS" };
+      }
+      if (cleanBin === "TEP") {
+        return { counter: "TEP", finalGroup: "TEP", finalCat: origCat || "OTHERS" };
+      }
 
+      let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
       const finalCat = mapping.categories[origCat] || origCat || "OTHERS";
       const combined = finalGroup + finalCat;
 
@@ -586,8 +595,6 @@
             counterAggregates[counter].qty += qty;
             counterAggregates[counter].gross += gross;
             counterAggregates[counter].value += val;
-
-            // Store cleanly as pure number
             counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
 
             counterAggregates["ALL"].qty += qty;
@@ -672,8 +679,6 @@
             if (status !== "RECEIVED") return;
 
             const binCode = String(r["BinCode"] || "").trim().toUpperCase();
-            if (binCode === "GEP" || binCode === "TEP") return;
-
             const dateStr = normalizeDate(r["Doc Date"]);
             if (!dateStr) return;
             if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
@@ -732,8 +737,6 @@
 
           rows.forEach(r => {
             const binCode = String(r["Bin Code"] || "").trim().toUpperCase();
-            if (binCode === "GEP" || binCode === "TEP") return;
-
             const dateStr = normalizeDate(r["STN Request Date"]);
             if (!dateStr) return;
             if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
@@ -1132,14 +1135,15 @@
 
       const sectionTitle = selectedCounter === "BANGLE" 
         ? "Bangles Reconciliation by Set (Opening + Received + GRN - Issue - Sold = Closing)" 
-        : "Counter Category Reconciliation Table";
+        : (selectedCounter === "GEP" || selectedCounter === "TEP")
+          ? `${selectedCounter} Reconciliation (Opening + Received + GRN - Issue - Sold = Closing)`
+          : "Counter Category Reconciliation Table";
 
       let rowsHtml = "";
       if (allCatKeys.length === 0) {
         rowsHtml = `<tr><td colspan="9" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
       } else {
         allCatKeys.forEach(cat => {
-          // Read safely using getSafeQty
           const oQ = getSafeQty(openCategories[cat]);
           const rQ = getSafeQty(recCategories[cat]);
           const gQ = getSafeQty(grnCategories[cat]);
@@ -1308,7 +1312,7 @@
       document.getElementById("detailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a file to begin</div>`;
     }
 
-    // --- Manage Uploads Modal (Robust error-handled) ---
+    // --- Manage Uploads Modal ---
     function renderManageList() {
       const container = document.getElementById("manageListContainer");
       container.innerHTML = "";
@@ -1392,7 +1396,6 @@
 
     // --- Event Listeners Setup ---
     function setupEventListeners() {
-      // Live Stock
       const fileLive = document.getElementById("fileLive");
       const dropLive = document.getElementById("dropAreaLive");
       fileLive.addEventListener("change", (e) => { if (e.target.files.length > 0) processLiveStockFile(e.target.files[0]); });
@@ -1400,7 +1403,6 @@
       dropLive.addEventListener("dragleave", () => { dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); });
       dropLive.addEventListener("drop", (e) => { e.preventDefault(); dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) processLiveStockFile(e.dataTransfer.files[0]); });
 
-      // Receipt
       const fileReceipt = document.getElementById("fileReceipt");
       const dropReceipt = document.getElementById("dropAreaReceipt");
       fileReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processReceiptFile(e.target.files[0]); });
@@ -1408,7 +1410,6 @@
       dropReceipt.addEventListener("dragleave", () => { dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); });
       dropReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); if (e.dataTransfer.files.length > 0) processReceiptFile(e.dataTransfer.files[0]); });
 
-      // Issue
       const fileIssue = document.getElementById("fileIssue");
       const dropIssue = document.getElementById("dropAreaIssue");
       fileIssue.addEventListener("change", (e) => { if (e.target.files.length > 0) processIssueFile(e.target.files[0]); });
@@ -1416,7 +1417,6 @@
       dropIssue.addEventListener("dragleave", () => { dropIssue.classList.remove("border-purple-500", "bg-purple-50"); });
       dropIssue.addEventListener("drop", (e) => { e.preventDefault(); dropIssue.classList.remove("border-purple-500", "bg-purple-50"); if (e.dataTransfer.files.length > 0) processIssueFile(e.dataTransfer.files[0]); });
 
-      // Sales
       const fileSales = document.getElementById("fileSales");
       const dropSales = document.getElementById("dropAreaSales");
       fileSales.addEventListener("change", (e) => { if (e.target.files.length > 0) processSalesFile(e.target.files[0]); });
@@ -1424,7 +1424,6 @@
       dropSales.addEventListener("dragleave", () => { dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); });
       dropSales.addEventListener("drop", (e) => { e.preventDefault(); dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); if (e.dataTransfer.files.length > 0) processSalesFile(e.dataTransfer.files[0]); });
 
-      // Month Selection & Archive
       document.getElementById("monthSelect").addEventListener("change", async (e) => {
         currentActiveMonth = e.target.value;
         currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
@@ -1447,7 +1446,6 @@
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
-      // Manage Uploads Modal Handlers
       document.getElementById("btnOpenManage").addEventListener("click", () => {
         try {
           renderManageList();
@@ -1472,7 +1470,6 @@
         }
       });
 
-      // Backup Download
       document.getElementById("btnBackup").addEventListener("click", async () => {
         const days = await getAllDayRecords();
         const months = await getAllMonthRecords();
@@ -1487,7 +1484,6 @@
         dl.remove();
       });
 
-      // Backup Restore
       document.getElementById("restoreInput").addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
