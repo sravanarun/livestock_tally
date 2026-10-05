@@ -61,7 +61,7 @@
           <div class="flex items-center gap-2">
             <label for="monthSelect" class="text-xs font-semibold text-slate-600">Month:</label>
             <select id="monthSelect" class="text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1 font-semibold text-slate-800 focus:outline-none"></select>
-            <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors">
+            <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors cursor-pointer">
               🔒 Archive Month
             </button>
           </div>
@@ -276,17 +276,34 @@
 
   <!-- Manage Uploads Modal -->
   <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl overflow-hidden">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
-          <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Dates & Months</h3>
-          <p class="text-xs text-slate-500">Remove accidental files or clear specific records</p>
+          <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Reports</h3>
+          <p class="text-xs text-slate-500">Review and delete specific day snapshots or monthly transaction files</p>
         </div>
         <button id="btnCloseManage" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer">✕</button>
       </div>
 
-      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="manageListContainer"></div>
+      <!-- Navigation Tabs -->
+      <div class="flex border-b border-slate-200 bg-slate-100/70 px-6 pt-2">
+        <button id="tabBtnDays" type="button" class="pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all">
+          Daily Live Stock Snapshots
+        </button>
+        <button id="tabBtnMonths" type="button" class="pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all">
+          Monthly Transaction Reports
+        </button>
+      </div>
 
+      <!-- Tab Content 1: Daily Snapshots -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="manageListContainerDays"></div>
+
+      <!-- Tab Content 2: Monthly Transactions -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3 hidden" id="manageListContainerMonths"></div>
+
+      <!-- Modal Footer -->
       <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
         <button id="btnClearAll" type="button" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer">
           Clear Entire Database
@@ -387,6 +404,15 @@
       });
     }
 
+    async function deleteMonthRecord(monthStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("monthly_transactions", "readwrite");
+        tx.objectStore("monthly_transactions").delete(monthStr);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
     async function clearAllData() {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(["days", "monthly_transactions"], "readwrite");
@@ -399,7 +425,6 @@
 
     // --- State Variables ---
     let mapping = { groups: {}, categories: {}, counters: {} };
-    // Explicitly add GEP and TEP to available counters list
     let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING", "GEP", "TEP"];
     let selectedCounter = "BANGLE";
     let allDayRecords = [];
@@ -462,7 +487,6 @@
             mapping.counters[combined] = counter;
             counterSet.add(counter);
           });
-          // Ensure GEP and TEP are present
           counterSet.add("GEP");
           counterSet.add("TEP");
           availableCounters = Array.from(counterSet);
@@ -512,7 +536,6 @@
       return null;
     }
 
-    // Explicit Priority Routing for GEP and TEP Bins
     function resolveCounter(origGroup, origCat, binCode) {
       const cleanBin = String(binCode || "").trim().toUpperCase();
       if (cleanBin === "GEP") {
@@ -710,9 +733,7 @@
             receiptsByDate[dateStr]["ALL"].categories[allCatKey] = (receiptsByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
 
-          await updateMonthlyData(detectedMonth || currentActiveMonth, "receipts", receiptsByDate);
-          document.getElementById("receiptStatus").textContent = `Active (${detectedMonth})`;
-          document.getElementById("receiptStatus").className = "text-[10px] text-blue-600 font-bold";
+          await updateMonthlyData(detectedMonth || currentActiveMonth, "receipts", receiptsByDate, file.name);
           renderDashboard();
           alert(`Updated Stock Receipts for ${detectedMonth}!`);
         } catch (err) {
@@ -768,9 +789,7 @@
             issuesByDate[dateStr]["ALL"].categories[allCatKey] = (issuesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
 
-          await updateMonthlyData(detectedMonth || currentActiveMonth, "issues", issuesByDate);
-          document.getElementById("issueStatus").textContent = `Active (${detectedMonth})`;
-          document.getElementById("issueStatus").className = "text-[10px] text-purple-600 font-bold";
+          await updateMonthlyData(detectedMonth || currentActiveMonth, "issues", issuesByDate, file.name);
           renderDashboard();
           alert(`Updated Stock Issues for ${detectedMonth}!`);
         } catch (err) {
@@ -845,12 +864,14 @@
 
           const mKey = detectedMonth || currentActiveMonth;
           let mRec = await getMonthRecord(mKey);
-          if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {} };
+          if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}, files: {} };
 
           if (mRec.isArchived) {
             return alert(`Month ${mKey} is archived. Unlock it from Manage Uploads first.`);
           }
 
+          if (!mRec.files) mRec.files = {};
+          mRec.files.sales = file.name;
           mRec.sales = salesByDate;
           mRec.grn = grnByDate;
           await saveMonthRecord(mRec);
@@ -858,9 +879,6 @@
           currentActiveMonth = mKey;
           currentMonthData = mRec;
           await refreshMonthDropdown();
-
-          document.getElementById("salesStatus").textContent = `Active (${detectedMonth})`;
-          document.getElementById("salesStatus").className = "text-[10px] text-emerald-600 font-bold";
           renderDashboard();
           alert(`Updated Sales & GRN for ${detectedMonth}!`);
         } catch (err) {
@@ -871,20 +889,41 @@
       reader.readAsArrayBuffer(file);
     }
 
-    async function updateMonthlyData(mKey, fieldName, dataByDate) {
+    async function updateMonthlyData(mKey, fieldName, dataByDate, fileName) {
       let mRec = await getMonthRecord(mKey);
-      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {} };
+      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}, files: {} };
 
       if (mRec.isArchived) {
         throw new Error(`Month ${mKey} is locked and archived.`);
       }
 
+      if (!mRec.files) mRec.files = {};
+      mRec.files[fieldName] = fileName;
       mRec[fieldName] = dataByDate;
       await saveMonthRecord(mRec);
 
       currentActiveMonth = mKey;
       currentMonthData = mRec;
       await refreshMonthDropdown();
+    }
+
+    function updateUploadCardsStatus() {
+      const mRec = currentMonthData || {};
+      const hasRec = mRec.receipts && Object.keys(mRec.receipts).length > 0;
+      const hasIss = mRec.issues && Object.keys(mRec.issues).length > 0;
+      const hasSale = mRec.sales && Object.keys(mRec.sales).length > 0;
+
+      const recEl = document.getElementById("receiptStatus");
+      recEl.textContent = hasRec ? `Active (${mRec.month})` : "Not Uploaded";
+      recEl.className = hasRec ? "text-[10px] text-blue-600 font-bold" : "text-[10px] text-slate-400";
+
+      const issEl = document.getElementById("issueStatus");
+      issEl.textContent = hasIss ? `Active (${mRec.month})` : "Not Uploaded";
+      issEl.className = hasIss ? "text-[10px] text-purple-600 font-bold" : "text-[10px] text-slate-400";
+
+      const saleEl = document.getElementById("salesStatus");
+      saleEl.textContent = hasSale ? `Active (${mRec.month})` : "Not Uploaded";
+      saleEl.className = hasSale ? "text-[10px] text-emerald-600 font-bold" : "text-[10px] text-slate-400";
     }
 
     async function refreshMonthDropdown() {
@@ -917,6 +956,8 @@
 
       const btn = document.getElementById("btnArchiveMonth");
       btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
+
+      updateUploadCardsStatus();
     }
 
     function parseDateStr(str) {
@@ -1115,7 +1156,6 @@
       }
     }
 
-    // --- Detail Reconciliation Table with SAFE QTY extraction ---
     function renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
       const openCategories = openData.categories || {};
       const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
@@ -1210,7 +1250,6 @@
       `;
     }
 
-    // --- Coins Section ---
     function renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
       const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
       const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
@@ -1312,13 +1351,19 @@
       document.getElementById("detailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a file to begin</div>`;
     }
 
-    // --- Manage Uploads Modal ---
+    // --- Manage Uploads: Render Tabs & Lists ---
     function renderManageList() {
-      const container = document.getElementById("manageListContainer");
+      renderManageDaysList();
+      renderManageMonthsList();
+    }
+
+    // Tab 1: Live Stock Days
+    function renderManageDaysList() {
+      const container = document.getElementById("manageListContainerDays");
       container.innerHTML = "";
 
       if (!allDayRecords || allDayRecords.length === 0) {
-        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No uploaded records found.</div>`;
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No live stock snapshots uploaded yet.</div>`;
         return;
       }
 
@@ -1364,6 +1409,96 @@
       });
     }
 
+    // Tab 2: Monthly Transaction Reports
+    async function renderManageMonthsList() {
+      const container = document.getElementById("manageListContainerMonths");
+      container.innerHTML = "";
+
+      const records = await getAllMonthRecords();
+      if (!records || records.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No monthly transaction reports uploaded yet.</div>`;
+        return;
+      }
+
+      records.sort((a,b) => b.month.localeCompare(a.month));
+
+      records.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 shadow-xs";
+
+        const hasRec = m.receipts && Object.keys(m.receipts).length > 0;
+        const hasIss = m.issues && Object.keys(m.issues).length > 0;
+        const hasSale = m.sales && Object.keys(m.sales).length > 0;
+
+        const recFileName = (m.files && m.files.receipts) ? m.files.receipts : "Stock Receipt Report";
+        const issFileName = (m.files && m.files.issues) ? m.files.issues : "Stock Issue Report";
+        const saleFileName = (m.files && m.files.sales) ? m.files.sales : "Sales Report POS";
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${m.month}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${m.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">
+                ${m.isArchived ? 'Archived (Locked)' : 'Active Month'}
+              </span>
+            </div>
+            <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 transition-colors cursor-pointer">
+              Delete Month
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+            <!-- Receipt -->
+            <div class="p-2.5 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-blue-900 flex items-center gap-1">📥 Receipts (STM)</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${recFileName}">${hasRec ? recFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasRec ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete Receipt
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- Issue -->
+            <div class="p-2.5 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-purple-900 flex items-center gap-1">📤 Issues (Outward)</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${issFileName}">${hasIss ? issFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasIss ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete Issue
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- Sales -->
+            <div class="p-2.5 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1">🏷 Sales & GRN</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${saleFileName}">${hasSale ? saleFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasSale ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete Sales
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // --- Deletion Handlers ---
     window.handleClearClosing = async function(dateStr) {
       if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
@@ -1377,10 +1512,37 @@
     };
 
     window.handleDeleteDay = async function(dateStr) {
-      if (!confirm(`Delete ALL records for ${dateStr}?`)) return;
+      if (!confirm(`Delete live stock snapshot for ${dateStr}?`)) return;
       await deleteDayRecord(dateStr);
       await refreshDayList();
       renderManageList();
+    };
+
+    window.handleDeleteMonthSubReport = async function(monthStr, subKey) {
+      if (!confirm(`Are you sure you want to delete the ${subKey.toUpperCase()} data for ${monthStr}? You can upload that report again immediately.`)) return;
+      const mRec = await getMonthRecord(monthStr);
+      if (mRec) {
+        if (subKey === "sales") {
+          mRec.sales = {};
+          mRec.grn = {};
+          if (mRec.files) delete mRec.files.sales;
+        } else {
+          mRec[subKey] = {};
+          if (mRec.files) delete mRec.files[subKey];
+        }
+        await saveMonthRecord(mRec);
+        await refreshMonthDropdown();
+        renderManageList();
+        renderDashboard();
+      }
+    };
+
+    window.handleDeleteEntireMonth = async function(monthStr) {
+      if (!confirm(`Delete all transaction reports (Receipts, Issues, Sales) for ${monthStr}?`)) return;
+      await deleteMonthRecord(monthStr);
+      await refreshMonthDropdown();
+      renderManageList();
+      renderDashboard();
     };
 
     window.copyCurrentReconciliation = function(date) {
@@ -1396,6 +1558,28 @@
 
     // --- Event Listeners Setup ---
     function setupEventListeners() {
+      // Manage Modal Tabs Switching
+      const tabBtnDays = document.getElementById("tabBtnDays");
+      const tabBtnMonths = document.getElementById("tabBtnMonths");
+      const containerDays = document.getElementById("manageListContainerDays");
+      const containerMonths = document.getElementById("manageListContainerMonths");
+
+      tabBtnDays.addEventListener("click", () => {
+        tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+        containerDays.classList.remove("hidden");
+        containerMonths.classList.add("hidden");
+      });
+
+      tabBtnMonths.addEventListener("click", () => {
+        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+        tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+        containerMonths.classList.remove("hidden");
+        containerDays.classList.add("hidden");
+        renderManageMonthsList();
+      });
+
+      // File Drag & Drop Inputs
       const fileLive = document.getElementById("fileLive");
       const dropLive = document.getElementById("dropAreaLive");
       fileLive.addEventListener("change", (e) => { if (e.target.files.length > 0) processLiveStockFile(e.target.files[0]); });
@@ -1424,6 +1608,7 @@
       dropSales.addEventListener("dragleave", () => { dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); });
       dropSales.addEventListener("drop", (e) => { e.preventDefault(); dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); if (e.dataTransfer.files.length > 0) processSalesFile(e.dataTransfer.files[0]); });
 
+      // Month Selection & Lock
       document.getElementById("monthSelect").addEventListener("change", async (e) => {
         currentActiveMonth = e.target.value;
         currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
@@ -1431,6 +1616,7 @@
         };
         const btn = document.getElementById("btnArchiveMonth");
         btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
+        updateUploadCardsStatus();
         renderDashboard();
       });
 
@@ -1446,12 +1632,9 @@
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
+      // Manage Uploads Modal
       document.getElementById("btnOpenManage").addEventListener("click", () => {
-        try {
-          renderManageList();
-        } catch (e) {
-          console.error("renderManageList error:", e);
-        }
+        renderManageList();
         document.getElementById("manageModal").classList.remove("hidden");
       });
 
@@ -1460,7 +1643,7 @@
       });
 
       document.getElementById("btnClearAll").addEventListener("click", async () => {
-        if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction data. Proceed?")) {
+        if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
           await clearAllData();
           await refreshDayList();
           await refreshMonthDropdown();
@@ -1470,6 +1653,7 @@
         }
       });
 
+      // Backup & Restore
       document.getElementById("btnBackup").addEventListener("click", async () => {
         const days = await getAllDayRecords();
         const months = await getAllMonthRecords();
