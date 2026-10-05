@@ -32,10 +32,10 @@
 
       <!-- Quick Action Controls -->
       <div class="flex items-center gap-2">
-        <button id="btnOpenManage" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1.5">
+        <button id="btnOpenManage" type="button" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1.5 cursor-pointer">
           <span>⚙</span> Manage Uploads
         </button>
-        <button id="btnBackup" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+        <button id="btnBackup" type="button" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
           ⬇ Export Backup
         </button>
         <label for="restoreInput" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md cursor-pointer transition-colors border border-slate-300">
@@ -61,7 +61,7 @@
           <div class="flex items-center gap-2">
             <label for="monthSelect" class="text-xs font-semibold text-slate-600">Month:</label>
             <select id="monthSelect" class="text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1 font-semibold text-slate-800 focus:outline-none"></select>
-            <button id="btnArchiveMonth" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors">
+            <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors">
               🔒 Archive Month
             </button>
           </div>
@@ -82,7 +82,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="liveStatus" class="text-[10px] text-slate-400">Ready</span>
             <input type="file" id="fileLive" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileLive').click()" class="text-xs font-semibold px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors">
+            <button onclick="document.getElementById('fileLive').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -100,7 +100,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="receiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
             <input type="file" id="fileReceipt" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileReceipt').click()" class="text-xs font-semibold px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+            <button onclick="document.getElementById('fileReceipt').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -118,7 +118,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="issueStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
             <input type="file" id="fileIssue" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileIssue').click()" class="text-xs font-semibold px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors">
+            <button onclick="document.getElementById('fileIssue').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -136,7 +136,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="salesStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
             <input type="file" id="fileSales" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileSales').click()" class="text-xs font-semibold px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors">
+            <button onclick="document.getElementById('fileSales').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -269,7 +269,7 @@
         </div>
       </div>
 
-      <!-- DYNAMIC DETAIL SECTION: BREAKDOWN RECONCILIATION TABLE -->
+      <!-- DYNAMIC DETAIL SECTION -->
       <div id="detailSectionContainer"></div>
     </div>
   </main>
@@ -282,16 +282,16 @@
           <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Dates & Months</h3>
           <p class="text-xs text-slate-500">Remove accidental files or clear specific records</p>
         </div>
-        <button id="btnCloseManage" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
+        <button id="btnCloseManage" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer">✕</button>
       </div>
 
       <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="manageListContainer"></div>
 
       <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-        <button id="btnClearAll" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline">
+        <button id="btnClearAll" type="button" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer">
           Clear Entire Database
         </button>
-        <button onclick="document.getElementById('manageModal').classList.add('hidden')" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors">
+        <button onclick="document.getElementById('manageModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">
           Close
         </button>
       </div>
@@ -313,7 +313,7 @@
             dbInstance.createObjectStore("days", { keyPath: "date" });
           }
           if (!dbInstance.objectStoreNames.contains("monthly_transactions")) {
-            dbInstance.createObjectStore("monthly_transactions", { keyPath: "month" }); // e.g. "2026-10"
+            dbInstance.createObjectStore("monthly_transactions", { keyPath: "month" });
           }
         };
         request.onsuccess = (e) => {
@@ -324,7 +324,6 @@
       });
     }
 
-    // Days operations
     async function saveDayRecord(record) {
       return new Promise((resolve, reject) => {
         const tx = db.transaction("days", "readwrite");
@@ -347,7 +346,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("days", "readonly");
         const req = tx.objectStore("days").getAll();
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => resolve(req.result || []);
         req.onerror = (e) => reject(e);
       });
     }
@@ -361,7 +360,6 @@
       });
     }
 
-    // Monthly Transactions operations
     async function saveMonthRecord(record) {
       return new Promise((resolve, reject) => {
         const tx = db.transaction("monthly_transactions", "readwrite");
@@ -384,7 +382,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("monthly_transactions", "readonly");
         const req = tx.objectStore("monthly_transactions").getAll();
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => resolve(req.result || []);
         req.onerror = (e) => reject(e);
       });
     }
@@ -400,16 +398,20 @@
     }
 
     // --- State Variables ---
-    let mapping = {
-      groups: {},
-      categories: {},
-      counters: {}
-    };
+    let mapping = { groups: {}, categories: {}, counters: {} };
     let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING"];
-    let selectedCounter = "ALL";
+    let selectedCounter = "BANGLE";
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
     let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {} };
+
+    // --- Helper to safely get quantity regardless of whether category was stored as number or object ---
+    function getSafeQty(catData) {
+      if (catData === undefined || catData === null) return 0;
+      if (typeof catData === "number") return catData;
+      if (typeof catData === "object" && catData.qty !== undefined) return Number(catData.qty) || 0;
+      return Number(catData) || 0;
+    }
 
     // --- Initialize Application ---
     window.addEventListener("DOMContentLoaded", async () => {
@@ -425,7 +427,6 @@
       setupEventListeners();
     });
 
-    // --- Dynamic Mapping File Loader ---
     async function loadMappingMaster() {
       const badge = document.getElementById("mapBadge");
       try {
@@ -482,7 +483,8 @@
         const btn = document.createElement("button");
         const isActive = cnt === selectedCounter;
         btn.textContent = cnt;
-        btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-sm ${
+        btn.type = "button";
+        btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-sm cursor-pointer ${
           isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
         }`;
         btn.onclick = () => {
@@ -494,27 +496,19 @@
       });
     }
 
-    // --- Helper: Standardize Date string to DD-MM-YYYY ---
     function normalizeDate(raw) {
       if (!raw) return null;
       if (raw instanceof Date) {
         return `${String(raw.getDate()).padStart(2, "0")}-${String(raw.getMonth() + 1).padStart(2, "0")}-${raw.getFullYear()}`;
       }
       const str = String(raw).trim();
-      // Match DD-MM-YYYY or DD/MM/YYYY
       let m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-      if (m) {
-        return `${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[3]}`;
-      }
-      // Match YYYY-MM-DD
+      if (m) return `${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[3]}`;
       m = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-      if (m) {
-        return `${String(m[3]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[1]}`;
-      }
+      if (m) return `${String(m[3]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[1]}`;
       return null;
     }
 
-    // Helper: Map Group & Category to Counter
     function resolveCounter(origGroup, origCat, binCode) {
       let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
       if (binCode === "GEP") finalGroup = "GEP";
@@ -535,7 +529,7 @@
       return { counter, finalGroup, finalCat };
     }
 
-    // --- Parse 1: Daily Live Stock Dump ---
+    // --- Parse 1: Daily Live Stock ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -568,7 +562,6 @@
             const val = Number(row["Final Price - Pre Tax Value"] || 0);
             const unitWeight = Number(row["Unit Weight"] || 0);
 
-            // Bangle sets
             let categoryDisplayKey = finalCat;
             if (counter === "BANGLE" || finalCat === "BANGLES") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
@@ -579,7 +572,6 @@
               else categoryDisplayKey = "Other Bangles";
             }
 
-            // Coin weights
             if (counter === "COIN" || finalCat === "COINS") {
               const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
               const isSilver = (coinKaratChar === "A") || (origGroup.toLowerCase().includes("silver"));
@@ -595,25 +587,15 @@
             counterAggregates[counter].gross += gross;
             counterAggregates[counter].value += val;
 
-            if (!counterAggregates[counter].categories[categoryDisplayKey]) {
-              counterAggregates[counter].categories[categoryDisplayKey] = { qty: 0, gross: 0, value: 0 };
-            }
-            counterAggregates[counter].categories[categoryDisplayKey].qty += qty;
-            counterAggregates[counter].categories[categoryDisplayKey].gross += gross;
-            counterAggregates[counter].categories[categoryDisplayKey].value += val;
+            // Store cleanly as pure number
+            counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
 
-            // ALL Counter
             counterAggregates["ALL"].qty += qty;
             counterAggregates["ALL"].gross += gross;
             counterAggregates["ALL"].value += val;
 
             const allCatKey = (counter === "BANGLE") ? "BANGLES" : categoryDisplayKey;
-            if (!counterAggregates["ALL"].categories[allCatKey]) {
-              counterAggregates["ALL"].categories[allCatKey] = { qty: 0, gross: 0, value: 0 };
-            }
-            counterAggregates["ALL"].categories[allCatKey].qty += qty;
-            counterAggregates["ALL"].categories[allCatKey].gross += gross;
-            counterAggregates["ALL"].categories[allCatKey].value += val;
+            counterAggregates["ALL"].categories[allCatKey] = (counterAggregates["ALL"].categories[allCatKey] || 0) + qty;
           });
 
           if (!counterAggregates["COIN"]) {
@@ -650,7 +632,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- Helper to parse XLSX skipping the title row (row 1) ---
     function parseReportWithHeaderAtRow2(workbook) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -667,7 +648,6 @@
       return dataRows;
     }
 
-    // Helper to determine Month Key YYYY-MM
     function extractMonthKey(dateStr) {
       if (!dateStr) return null;
       const parts = dateStr.split("-");
@@ -675,7 +655,7 @@
       return null;
     }
 
-    // --- Parse 2: Stock Receipt (STM) ---
+    // --- Parse 2: Stock Receipt ---
     async function processReceiptFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -685,14 +665,14 @@
           if (rows.length === 0) return alert("Receipt report is empty.");
 
           let detectedMonth = null;
-          const receiptsByDate = {}; // date -> { counter -> { qty, categories: { cat -> qty } } }
+          const receiptsByDate = {};
 
           rows.forEach(r => {
             const status = String(r["STNStatus"] || "").trim().toUpperCase();
-            if (status !== "RECEIVED") return; // Keep only RECEIVED
+            if (status !== "RECEIVED") return;
 
             const binCode = String(r["BinCode"] || "").trim().toUpperCase();
-            if (binCode === "GEP" || binCode === "TEP") return; // Exclude GEP/TEP
+            if (binCode === "GEP" || binCode === "TEP") return;
 
             const dateStr = normalizeDate(r["Doc Date"]);
             if (!dateStr) return;
@@ -700,25 +680,36 @@
 
             const origGroup = String(r["CFA Description"] || "").trim();
             const origCat = String(r["ProductCategory"] || "").trim();
+            const itemCode = String(r["ItemCode"] || "").trim();
             const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
             const qty = Number(r["ReceivedQty"] || 0);
+
+            let catKey = finalCat;
+            if (counter === "BANGLE" || finalCat === "BANGLES") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
 
             if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
             if (!receiptsByDate[dateStr][counter]) receiptsByDate[dateStr][counter] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
 
             receiptsByDate[dateStr][counter].qty += qty;
-            receiptsByDate[dateStr][counter].categories[finalCat] = (receiptsByDate[dateStr][counter].categories[finalCat] || 0) + qty;
+            receiptsByDate[dateStr][counter].categories[catKey] = (receiptsByDate[dateStr][counter].categories[catKey] || 0) + qty;
 
             receiptsByDate[dateStr]["ALL"].qty += qty;
-            receiptsByDate[dateStr]["ALL"].categories[finalCat] = (receiptsByDate[dateStr]["ALL"].categories[finalCat] || 0) + qty;
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+            receiptsByDate[dateStr]["ALL"].categories[allCatKey] = (receiptsByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
 
           await updateMonthlyData(detectedMonth || currentActiveMonth, "receipts", receiptsByDate);
           document.getElementById("receiptStatus").textContent = `Active (${detectedMonth})`;
           document.getElementById("receiptStatus").className = "text-[10px] text-blue-600 font-bold";
           renderDashboard();
-          alert(`Successfully updated Stock Receipts for ${detectedMonth}!`);
+          alert(`Updated Stock Receipts for ${detectedMonth}!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Stock Receipt report.");
@@ -727,7 +718,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- Parse 3: Stock Issue (Outward) ---
+    // --- Parse 3: Stock Issue ---
     async function processIssueFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -749,25 +740,36 @@
 
             const origGroup = String(r["CFA Description"] || "").trim();
             const origCat = String(r["Product Category Description"] || "").trim();
+            const itemCode = String(r["Variant Code"] || "").trim();
             const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
             const qty = Number(r["Qty"] || 0);
+
+            let catKey = finalCat;
+            if (counter === "BANGLE" || finalCat === "BANGLES") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
 
             if (!issuesByDate[dateStr]) issuesByDate[dateStr] = {};
             if (!issuesByDate[dateStr][counter]) issuesByDate[dateStr][counter] = { qty: 0, categories: {} };
             if (!issuesByDate[dateStr]["ALL"]) issuesByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
 
             issuesByDate[dateStr][counter].qty += qty;
-            issuesByDate[dateStr][counter].categories[finalCat] = (issuesByDate[dateStr][counter].categories[finalCat] || 0) + qty;
+            issuesByDate[dateStr][counter].categories[catKey] = (issuesByDate[dateStr][counter].categories[catKey] || 0) + qty;
 
             issuesByDate[dateStr]["ALL"].qty += qty;
-            issuesByDate[dateStr]["ALL"].categories[finalCat] = (issuesByDate[dateStr]["ALL"].categories[finalCat] || 0) + qty;
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+            issuesByDate[dateStr]["ALL"].categories[allCatKey] = (issuesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
 
           await updateMonthlyData(detectedMonth || currentActiveMonth, "issues", issuesByDate);
           document.getElementById("issueStatus").textContent = `Active (${detectedMonth})`;
           document.getElementById("issueStatus").className = "text-[10px] text-purple-600 font-bold";
           renderDashboard();
-          alert(`Successfully updated Stock Issues for ${detectedMonth}!`);
+          alert(`Updated Stock Issues for ${detectedMonth}!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Stock Issue report.");
@@ -776,7 +778,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- Parse 4: Sales Report POS (Sales & GRN split) ---
+    // --- Parse 4: Sales Report POS ---
     async function processSalesFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -791,7 +793,7 @@
 
           rows.forEach(r => {
             const loc = String(r["Location Code"] || "").trim().toUpperCase();
-            if (loc && loc !== "MAI") return; // Store location check
+            if (loc && loc !== "MAI") return;
 
             const dateStr = normalizeDate(r["Doc Date"]);
             if (!dateStr) return;
@@ -800,31 +802,41 @@
             const origGroup = String(r["CFA Product Code Description"] || "").trim();
             const origCat = String(r["Product Category Description"] || "").trim();
             const binCode = String(r["Bin Code"] || "").trim().toUpperCase();
+            const itemCode = String(r["Item Code"] || "").trim();
             const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
 
             const qty = Number(r["Quantity"] || 0);
 
+            let catKey = finalCat;
+            if (counter === "BANGLE" || finalCat === "BANGLES") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
+
             if (qty > 0) {
-              // Billed Sales
               if (!salesByDate[dateStr]) salesByDate[dateStr] = {};
               if (!salesByDate[dateStr][counter]) salesByDate[dateStr][counter] = { qty: 0, categories: {} };
               if (!salesByDate[dateStr]["ALL"]) salesByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
 
               salesByDate[dateStr][counter].qty += qty;
-              salesByDate[dateStr][counter].categories[finalCat] = (salesByDate[dateStr][counter].categories[finalCat] || 0) + qty;
+              salesByDate[dateStr][counter].categories[catKey] = (salesByDate[dateStr][counter].categories[catKey] || 0) + qty;
               salesByDate[dateStr]["ALL"].qty += qty;
-              salesByDate[dateStr]["ALL"].categories[finalCat] = (salesByDate[dateStr]["ALL"].categories[finalCat] || 0) + qty;
+              const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+              salesByDate[dateStr]["ALL"].categories[allCatKey] = (salesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
             } else if (qty < 0) {
-              // Customer Return (GRN back to stock)
               const grnQty = Math.abs(qty);
               if (!grnByDate[dateStr]) grnByDate[dateStr] = {};
               if (!grnByDate[dateStr][counter]) grnByDate[dateStr][counter] = { qty: 0, categories: {} };
               if (!grnByDate[dateStr]["ALL"]) grnByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
 
               grnByDate[dateStr][counter].qty += grnQty;
-              grnByDate[dateStr][counter].categories[finalCat] = (grnByDate[dateStr][counter].categories[finalCat] || 0) + grnQty;
+              grnByDate[dateStr][counter].categories[catKey] = (grnByDate[dateStr][counter].categories[catKey] || 0) + grnQty;
               grnByDate[dateStr]["ALL"].qty += grnQty;
-              grnByDate[dateStr]["ALL"].categories[finalCat] = (grnByDate[dateStr]["ALL"].categories[finalCat] || 0) + grnQty;
+              const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+              grnByDate[dateStr]["ALL"].categories[allCatKey] = (grnByDate[dateStr]["ALL"].categories[allCatKey] || 0) + grnQty;
             }
           });
 
@@ -847,7 +859,7 @@
           document.getElementById("salesStatus").textContent = `Active (${detectedMonth})`;
           document.getElementById("salesStatus").className = "text-[10px] text-emerald-600 font-bold";
           renderDashboard();
-          alert(`Successfully updated Sales and GRN for ${detectedMonth}!`);
+          alert(`Updated Sales & GRN for ${detectedMonth}!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Sales report.");
@@ -856,7 +868,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // Helper: Cumulative Replacement in Monthly record
     async function updateMonthlyData(mKey, fieldName, dataByDate) {
       let mRec = await getMonthRecord(mKey);
       if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {} };
@@ -865,7 +876,6 @@
         throw new Error(`Month ${mKey} is locked and archived.`);
       }
 
-      // Overwrite field for the month
       mRec[fieldName] = dataByDate;
       await saveMonthRecord(mRec);
 
@@ -874,7 +884,6 @@
       await refreshMonthDropdown();
     }
 
-    // --- Month Dropdown Sync ---
     async function refreshMonthDropdown() {
       const records = await getAllMonthRecords();
       const select = document.getElementById("monthSelect");
@@ -936,7 +945,6 @@
         }
       }
 
-      document.getElementById("storedCount").textContent = `${allDayRecords.length} day${allDayRecords.length === 1 ? "" : "s"}`;
       renderDashboard();
     }
 
@@ -954,11 +962,11 @@
       if (nextDay && nextDay.opening) {
         closingData = nextDay.opening.counters;
         closingType = "finalized";
-        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time})`;
+        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
       } else if (currentDay.closing) {
         closingData = currentDay.closing.counters;
         closingType = "temporary";
-        closingTimeLabel = `As of ${currentDay.closing.time}`;
+        closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
       }
 
       return {
@@ -970,7 +978,7 @@
       };
     }
 
-    // --- Main Dashboard & Tally Calculation Engine ---
+    // --- Dashboard Renderer ---
     function renderDashboard() {
       const selectedDate = document.getElementById("dateSelect").value;
       if (!selectedDate || allDayRecords.length === 0) {
@@ -987,7 +995,7 @@
       const hasOpening = !!resolved.opening;
       const hasClosing = resolved.closingType !== "none";
 
-      document.getElementById("openingDateSub").textContent = hasOpening ? `${resolved.opening.time}` : "Not Recorded";
+      document.getElementById("openingDateSub").textContent = hasOpening ? `${resolved.opening.time || 'Morning Dump'}` : "Not Recorded";
 
       const badge = document.getElementById("closingStatusBadge");
       const closingAccent = document.getElementById("closingAccent");
@@ -1021,38 +1029,36 @@
       document.getElementById("openExtra").classList.toggle("hidden", !showGross && !showVal);
       document.getElementById("closeExtra").classList.toggle("hidden", !showGross && !showVal);
 
-      // Opening & Closing Data
-      const openData = (hasOpening && resolved.opening.counters[selectedCounter]) 
+      const openData = (hasOpening && resolved.opening.counters && resolved.opening.counters[selectedCounter]) 
         ? resolved.opening.counters[selectedCounter] : { qty: 0, gross: 0, value: 0, categories: {} };
 
-      const closeData = (hasClosing && resolved.closingCounters[selectedCounter]) 
+      const closeData = (hasClosing && resolved.closingCounters && resolved.closingCounters[selectedCounter]) 
         ? resolved.closingCounters[selectedCounter] : null;
 
-      // Transactions from Monthly Data for selectedDate
-      const mRec = currentMonthData;
+      const mRec = currentMonthData || {};
       const recDate = (mRec.receipts && mRec.receipts[selectedDate] && mRec.receipts[selectedDate][selectedCounter]) ? mRec.receipts[selectedDate][selectedCounter] : { qty: 0, categories: {} };
       const grnDate = (mRec.grn && mRec.grn[selectedDate] && mRec.grn[selectedDate][selectedCounter]) ? mRec.grn[selectedDate][selectedCounter] : { qty: 0, categories: {} };
       const issDate = (mRec.issues && mRec.issues[selectedDate] && mRec.issues[selectedDate][selectedCounter]) ? mRec.issues[selectedDate][selectedCounter] : { qty: 0, categories: {} };
       const saleDate = (mRec.sales && mRec.sales[selectedDate] && mRec.sales[selectedDate][selectedCounter]) ? mRec.sales[selectedDate][selectedCounter] : { qty: 0, categories: {} };
 
-      const netTransactions = recDate.qty + grnDate.qty - issDate.qty - saleDate.qty;
+      const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
 
-      // Update Card 1: Opening
+      // Card 1: Opening
       document.getElementById("openQty").textContent = hasOpening ? openData.qty.toLocaleString() : "—";
       document.getElementById("openGross").textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
       document.getElementById("openVal").textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
 
-      // Update Card 2: Transactions
+      // Card 2: Transactions
       document.getElementById("transQty").textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
       document.getElementById("transQty").className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
-      document.getElementById("txRec").textContent = `+${recDate.qty}`;
-      document.getElementById("txGrn").textContent = `+${grnDate.qty}`;
-      document.getElementById("txIss").textContent = `-${issDate.qty}`;
-      document.getElementById("txSold").textContent = `-${saleDate.qty}`;
+      document.getElementById("txRec").textContent = `+${recDate.qty || 0}`;
+      document.getElementById("txGrn").textContent = `+${grnDate.qty || 0}`;
+      document.getElementById("txIss").textContent = `-${issDate.qty || 0}`;
+      document.getElementById("txSold").textContent = `-${saleDate.qty || 0}`;
 
-      // Update Card 3: Physical Closing
+      // Card 3: Closing
       const closeQtyUnit = document.getElementById("closeQtyUnit");
-      if (hasClosing) {
+      if (hasClosing && closeData) {
         closeQtyUnit.classList.remove("hidden");
         document.getElementById("closeQty").textContent = closeData.qty.toLocaleString();
         document.getElementById("closeGross").textContent = `${closeData.gross.toFixed(3)} g`;
@@ -1064,13 +1070,13 @@
         document.getElementById("closeVal").textContent = "—";
       }
 
-      // Update Card 4: Tally Difference (Physical - System Closing)
+      // Card 4: Difference
       const diffAccent = document.getElementById("diffAccent");
       const diffTitle = document.getElementById("diffTitle");
       const diffQtyEl = document.getElementById("diffQty");
       const diffStatusText = document.getElementById("diffStatusText");
 
-      if (hasClosing) {
+      if (hasClosing && closeData) {
         const systemClosing = openData.qty + netTransactions;
         const diffQty = closeData.qty - systemClosing;
 
@@ -1097,24 +1103,31 @@
         diffStatusText.className = "text-xs font-medium text-slate-400 mt-1";
       }
 
-      // Render Dynamic Detail Breakdown
+      // Detail Section
       const container = document.getElementById("detailSectionContainer");
       if (selectedCounter === "COIN") {
-        renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate);
+        renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
       } else {
         renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate);
       }
     }
 
-    // --- Detail Reconciliation Table ---
+    // --- Detail Reconciliation Table with SAFE QTY extraction ---
     function renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
+      const openCategories = openData.categories || {};
+      const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
+      const recCategories = recDate.categories || {};
+      const grnCategories = grnDate.categories || {};
+      const issCategories = issDate.categories || {};
+      const saleCategories = saleDate.categories || {};
+
       const allCatKeys = Array.from(new Set([
-        ...Object.keys(openData.categories || {}),
-        ...(closeData ? Object.keys(closeData.categories || {}) : []),
-        ...Object.keys(recDate.categories || {}),
-        ...Object.keys(grnDate.categories || {}),
-        ...Object.keys(issDate.categories || {}),
-        ...Object.keys(saleDate.categories || {})
+        ...Object.keys(openCategories),
+        ...Object.keys(closeCategories),
+        ...Object.keys(recCategories),
+        ...Object.keys(grnCategories),
+        ...Object.keys(issCategories),
+        ...Object.keys(saleCategories)
       ])).sort();
 
       const sectionTitle = selectedCounter === "BANGLE" 
@@ -1126,14 +1139,16 @@
         rowsHtml = `<tr><td colspan="9" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
       } else {
         allCatKeys.forEach(cat => {
-          const oQ = openData.categories[cat] || 0;
-          const rQ = recDate.categories[cat] || 0;
-          const gQ = grnDate.categories[cat] || 0;
-          const iQ = issDate.categories[cat] || 0;
-          const sQ = saleDate.categories[cat] || 0;
+          // Read safely using getSafeQty
+          const oQ = getSafeQty(openCategories[cat]);
+          const rQ = getSafeQty(recCategories[cat]);
+          const gQ = getSafeQty(grnCategories[cat]);
+          const iQ = getSafeQty(issCategories[cat]);
+          const sQ = getSafeQty(saleCategories[cat]);
 
           const systemClosing = oQ + rQ + gQ - iQ - sQ;
-          const cQ = closeData && closeData.categories[cat] !== undefined ? closeData.categories[cat] : null;
+          const hasCloseCat = closeData && closeCategories[cat] !== undefined;
+          const cQ = hasCloseCat ? getSafeQty(closeCategories[cat]) : null;
 
           let diffDisplay = "—";
           let diffClass = "text-slate-400";
@@ -1163,7 +1178,7 @@
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
           <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800">${sectionTitle}</h2>
-            <button onclick="copyCurrentReconciliation('${selectedDate}')" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all">
+            <button onclick="copyCurrentReconciliation('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
               📋 Copy for Stock Book
             </button>
           </div>
@@ -1191,7 +1206,7 @@
       `;
     }
 
-    // --- Coins Section: Gold vs Silver Denomination Tables ---
+    // --- Coins Section ---
     function renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
       const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
       const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
@@ -1214,8 +1229,8 @@
         let totalClose = 0;
 
         allWeights.forEach(wt => {
-          const oQ = oDict[wt] || 0;
-          const cQ = cDict ? (cDict[wt] || 0) : null;
+          const oQ = Number(oDict[wt]) || 0;
+          const cQ = cDict ? (Number(cDict[wt]) || 0) : null;
           totalOpen += oQ;
           if (cQ !== null) totalClose += cQ;
 
@@ -1251,7 +1266,7 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown (Pcs by Gram Weight)</h2>
-            <button onclick="copyCurrentReconciliation('${selectedDate}')" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all">
+            <button onclick="copyCurrentReconciliation('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
               📋 Copy for Stock Book
             </button>
           </div>
@@ -1293,22 +1308,27 @@
       document.getElementById("detailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a file to begin</div>`;
     }
 
-    // --- Manage Uploads Modal ---
+    // --- Manage Uploads Modal (Robust error-handled) ---
     function renderManageList() {
       const container = document.getElementById("manageListContainer");
       container.innerHTML = "";
 
-      if (allDayRecords.length === 0) {
+      if (!allDayRecords || allDayRecords.length === 0) {
         container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No uploaded records found.</div>`;
         return;
       }
 
-      [...allDayRecords].reverse().forEach(day => {
+      const reversedRecords = [...allDayRecords].reverse();
+
+      reversedRecords.forEach(day => {
         const item = document.createElement("div");
         item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
         const resolved = getResolvedDayStock(day.date);
         const hasOpening = !!day.opening;
         const hasClosing = resolved && resolved.closingType !== "none";
+
+        const openTime = (day.opening && day.opening.time) ? day.opening.time : 'Morning Dump';
+        const openFile = (day.opening && day.opening.fileName) ? `(${day.opening.fileName})` : '';
 
         item.innerHTML = `
           <div class="space-y-1">
@@ -1321,17 +1341,17 @@
               </span>
             </div>
             <div class="text-xs text-slate-500 space-y-0.5">
-              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${day.opening.time} (${day.opening.fileName})` : 'None'}</span></p>
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
               <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : 'Pending'}</span></p>
             </div>
           </div>
           <div class="flex items-center gap-2 self-end md:self-center">
             ${day.closing ? `
-              <button onclick="handleClearClosing('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors">
-                Clear Temporary Closing
+              <button onclick="handleClearClosing('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors cursor-pointer">
+                Clear Closing
               </button>
             ` : ''}
-            <button onclick="handleDeleteDay('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors">
+            <button onclick="handleDeleteDay('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors cursor-pointer">
               Delete Day
             </button>
           </div>
@@ -1372,7 +1392,7 @@
 
     // --- Event Listeners Setup ---
     function setupEventListeners() {
-      // 1. Live Stock Input & Drop
+      // Live Stock
       const fileLive = document.getElementById("fileLive");
       const dropLive = document.getElementById("dropAreaLive");
       fileLive.addEventListener("change", (e) => { if (e.target.files.length > 0) processLiveStockFile(e.target.files[0]); });
@@ -1380,7 +1400,7 @@
       dropLive.addEventListener("dragleave", () => { dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); });
       dropLive.addEventListener("drop", (e) => { e.preventDefault(); dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) processLiveStockFile(e.dataTransfer.files[0]); });
 
-      // 2. Receipt Input & Drop
+      // Receipt
       const fileReceipt = document.getElementById("fileReceipt");
       const dropReceipt = document.getElementById("dropAreaReceipt");
       fileReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processReceiptFile(e.target.files[0]); });
@@ -1388,7 +1408,7 @@
       dropReceipt.addEventListener("dragleave", () => { dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); });
       dropReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); if (e.dataTransfer.files.length > 0) processReceiptFile(e.dataTransfer.files[0]); });
 
-      // 3. Issue Input & Drop
+      // Issue
       const fileIssue = document.getElementById("fileIssue");
       const dropIssue = document.getElementById("dropAreaIssue");
       fileIssue.addEventListener("change", (e) => { if (e.target.files.length > 0) processIssueFile(e.target.files[0]); });
@@ -1396,7 +1416,7 @@
       dropIssue.addEventListener("dragleave", () => { dropIssue.classList.remove("border-purple-500", "bg-purple-50"); });
       dropIssue.addEventListener("drop", (e) => { e.preventDefault(); dropIssue.classList.remove("border-purple-500", "bg-purple-50"); if (e.dataTransfer.files.length > 0) processIssueFile(e.dataTransfer.files[0]); });
 
-      // 4. Sales Input & Drop
+      // Sales
       const fileSales = document.getElementById("fileSales");
       const dropSales = document.getElementById("dropAreaSales");
       fileSales.addEventListener("change", (e) => { if (e.target.files.length > 0) processSalesFile(e.target.files[0]); });
@@ -1427,8 +1447,13 @@
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
+      // Manage Uploads Modal Handlers
       document.getElementById("btnOpenManage").addEventListener("click", () => {
-        renderManageList();
+        try {
+          renderManageList();
+        } catch (e) {
+          console.error("renderManageList error:", e);
+        }
         document.getElementById("manageModal").classList.remove("hidden");
       });
 
