@@ -32,6 +32,9 @@
 
       <!-- Quick Action Controls -->
       <div class="flex items-center gap-2">
+        <button id="btnOpenManage" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1.5">
+          <span>⚙</span> Manage Uploads
+        </button>
         <button id="btnBackup" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
           ⬇ Export Backup
         </button>
@@ -213,10 +216,36 @@
     </div>
   </main>
 
+  <!-- Manage Uploads Modal -->
+  <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Dates</h3>
+          <p class="text-xs text-slate-500">Remove accidental files or clear specific snapshot records</p>
+        </div>
+        <button id="btnCloseManage" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="manageListContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button id="btnClearAll" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline">
+          Clear Entire Database
+        </button>
+        <button onclick="document.getElementById('manageModal').classList.add('hidden')" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 2; // Upgraded version for full day storage
+    const DB_VERSION = 2;
     let db;
 
     function openDatabase() {
@@ -224,7 +253,6 @@
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (e) => {
           const dbInstance = e.target.result;
-          // Create or maintain daily store
           if (!dbInstance.objectStoreNames.contains("days")) {
             dbInstance.createObjectStore("days", { keyPath: "date" });
           }
@@ -254,6 +282,26 @@
         const req = store.get(dateStr);
         req.onsuccess = () => resolve(req.result);
         req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteDayRecord(dateStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readwrite");
+        const store = tx.objectStore("days");
+        store.delete(dateStr);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function clearAllDayRecords() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readwrite");
+        const store = tx.objectStore("days");
+        store.clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
       });
     }
 
@@ -299,7 +347,6 @@
         const arrayBuffer = await res.arrayBuffer();
         const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-        // 1. Group Sheet
         const groupSheet = wb.Sheets["Group"];
         if (groupSheet) {
           const groupJson = XLSX.utils.sheet_to_json(groupSheet);
@@ -310,7 +357,6 @@
           });
         }
 
-        // 2. Category Sheet
         const catSheet = wb.Sheets["Category"];
         if (catSheet) {
           const catJson = XLSX.utils.sheet_to_json(catSheet);
@@ -321,7 +367,6 @@
           });
         }
 
-        // 3. Counter Sheet
         const counterSheet = wb.Sheets["Counter"];
         if (counterSheet) {
           const counterJson = XLSX.utils.sheet_to_json(counterSheet);
@@ -367,7 +412,7 @@
       });
     }
 
-    // --- Parse Live Stock File with Dynamic Opening vs Closing Logic ---
+    // --- Parse Live Stock File ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -377,8 +422,6 @@
           const firstSheetName = workbook.SheetNames[0];
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
 
-          // Extract date and time from filename
-          // e.g.: Live_Stock_Inventory_05-10-2026_10-39-04 AM.xlsx
           const dateMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{4})/);
           const timeMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{2}\s*[AP]M)/i);
 
@@ -392,7 +435,6 @@
             fileDate = `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
           }
 
-          // Compute aggregates
           const counterAggregates = {};
           availableCounters.forEach(c => {
             counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
@@ -410,7 +452,6 @@
             const finalCat = mapping.categories[origCat] || origCat;
             const combinedKey = finalGroup + finalCat;
 
-            // Resolve Counter
             let counter = mapping.counters[combinedKey];
             if (!counter) {
               if (finalCat === "COINS") counter = "COIN";
@@ -429,7 +470,6 @@
               counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
             }
 
-            // Counter aggregate
             counterAggregates[counter].qty += qty;
             counterAggregates[counter].gross += gross;
             counterAggregates[counter].value += val;
@@ -441,7 +481,6 @@
             counterAggregates[counter].categories[finalCat].gross += gross;
             counterAggregates[counter].categories[finalCat].value += val;
 
-            // ALL aggregate
             counterAggregates["ALL"].qty += qty;
             counterAggregates["ALL"].gross += gross;
             counterAggregates["ALL"].value += val;
@@ -454,12 +493,10 @@
             counterAggregates["ALL"].categories[finalCat].value += val;
           });
 
-          // Fetch existing day record if present
           let dayRecord = await getDayRecord(fileDate);
           let alertMsg = "";
 
           if (!dayRecord || !dayRecord.opening) {
-            // First file uploaded for this date = OPENING STOCK
             dayRecord = {
               date: fileDate,
               opening: {
@@ -472,8 +509,6 @@
             };
             alertMsg = `Saved ${fileDate} as OPENING stock (${fileTime}).`;
 
-            // Auto-finalization: If the previous day exists and has a temporary closing or no closing,
-            // this morning dump permanently finalizes yesterday's closing!
             const allDays = await getAllDayRecords();
             const sortedDates = allDays.map(d => d.date).sort((a,b) => {
               const [d1, m1, y1] = a.split("-").map(Number);
@@ -485,25 +520,23 @@
               const prevDateStr = sortedDates[prevIndex];
               const prevDayRecord = await getDayRecord(prevDateStr);
               if (prevDayRecord) {
-                // Permanently set yesterday's closing to match today's opening dump
                 prevDayRecord.closing = {
                   time: `${fileDate} morning (${fileTime})`,
                   fileName: file.name,
                   counters: counterAggregates
                 };
-                prevDayRecord.isTemporaryClosing = false; // PERMANENT
+                prevDayRecord.isTemporaryClosing = false;
                 await saveDayRecord(prevDayRecord);
               }
             }
 
           } else {
-            // Subsequent file uploaded on the SAME date = TEMPORARY CLOSING STOCK
             dayRecord.closing = {
               time: fileTime,
               fileName: file.name,
               counters: counterAggregates
             };
-            dayRecord.isTemporaryClosing = true; // Mark as temporary until next morning dump
+            dayRecord.isTemporaryClosing = true;
             alertMsg = `Updated ${fileDate} with TEMPORARY CLOSING stock (${fileTime}).`;
           }
 
@@ -530,6 +563,7 @@
       });
 
       const select = document.getElementById("dateSelect");
+      const currentSelected = select.value;
       select.innerHTML = "";
 
       if (allDayRecords.length === 0) {
@@ -541,8 +575,11 @@
           opt.textContent = rec.date;
           select.appendChild(opt);
         });
-        // Select latest day by default
-        select.value = allDayRecords[allDayRecords.length - 1].date;
+        if (currentSelected && allDayRecords.some(r => r.date === currentSelected)) {
+          select.value = currentSelected;
+        } else {
+          select.value = allDayRecords[allDayRecords.length - 1].date;
+        }
       }
 
       document.getElementById("storedCount").textContent = `${allDayRecords.length} day${allDayRecords.length === 1 ? "" : "s"}`;
@@ -558,13 +595,15 @@
       }
 
       const dayRecord = allDayRecords.find(d => d.date === selectedDate);
-      if (!dayRecord) return;
+      if (!dayRecord) {
+        resetDashboard();
+        return;
+      }
 
       const hasOpening = !!dayRecord.opening;
       const hasClosing = !!dayRecord.closing;
       const isTemp = dayRecord.isTemporaryClosing;
 
-      // Header subtitles
       document.getElementById("openingDateSub").textContent = hasOpening 
         ? `${dayRecord.opening.time}` 
         : "Not Recorded";
@@ -603,7 +642,6 @@
       document.getElementById("closeExtra").classList.toggle("hidden", !showGross && !showVal);
       document.getElementById("diffExtra").classList.toggle("hidden", !showGross && !showVal);
 
-      // Data extraction
       const openData = (hasOpening && dayRecord.opening.counters[selectedCounter]) 
         ? dayRecord.opening.counters[selectedCounter] 
         : { qty: 0, gross: 0, value: 0, categories: {} };
@@ -701,8 +739,82 @@
       document.getElementById("closeQty").textContent = "0";
       document.getElementById("openQty").textContent = "0";
       document.getElementById("diffQty").textContent = "0";
+      document.getElementById("closingDateSub").textContent = "—";
+      document.getElementById("openingDateSub").textContent = "—";
       document.getElementById("breakdownTbody").innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Upload a file to begin</td></tr>`;
     }
+
+    // --- Render Upload Management List ---
+    function renderManageList() {
+      const container = document.getElementById("manageListContainer");
+      container.innerHTML = "";
+
+      if (allDayRecords.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No uploaded records found.</div>`;
+        return;
+      }
+
+      // Display in descending order (latest dates first)
+      const reversedRecords = [...allDayRecords].reverse();
+
+      reversedRecords.forEach(day => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
+
+        const hasOpening = !!day.opening;
+        const hasClosing = !!day.closing;
+
+        item.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${day.date}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                hasClosing 
+                  ? (day.isTemporaryClosing ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') 
+                  : 'bg-blue-100 text-blue-800'
+              }">
+                ${hasClosing ? (day.isTemporaryClosing ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
+              </span>
+            </div>
+            <div class="text-xs text-slate-500 space-y-0.5">
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${day.opening.time} (${day.opening.fileName})` : 'None'}</span></p>
+              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? `${day.closing.time} (${day.closing.fileName})` : 'Pending'}</span></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end md:self-center">
+            ${hasClosing ? `
+              <button onclick="handleClearClosing('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors">
+                Clear Closing
+              </button>
+            ` : ''}
+            <button onclick="handleDeleteDay('${day.date}')" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors">
+              Delete Day
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // --- Targeted Deletion Handlers ---
+    window.handleClearClosing = async function(dateStr) {
+      if (!confirm(`Are you sure you want to remove the CLOSING stock for ${dateStr}? It will return to 'Pending'.`)) return;
+      const rec = await getDayRecord(dateStr);
+      if (rec) {
+        rec.closing = null;
+        rec.isTemporaryClosing = false;
+        await saveDayRecord(rec);
+        await refreshDayList();
+        renderManageList();
+      }
+    };
+
+    window.handleDeleteDay = async function(dateStr) {
+      if (!confirm(`Delete ALL records for ${dateStr}? This cannot be undone unless you have a backup.`)) return;
+      await deleteDayRecord(dateStr);
+      await refreshDayList();
+      renderManageList();
+    };
 
     // --- Event Listeners ---
     function setupEventListeners() {
@@ -731,6 +843,26 @@
       document.getElementById("dateSelect").addEventListener("change", renderDashboard);
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
+
+      // Manage Uploads Modal Handlers
+      document.getElementById("btnOpenManage").addEventListener("click", () => {
+        renderManageList();
+        document.getElementById("manageModal").classList.remove("hidden");
+      });
+
+      document.getElementById("btnCloseManage").addEventListener("click", () => {
+        document.getElementById("manageModal").classList.add("hidden");
+      });
+
+      document.getElementById("btnClearAll").addEventListener("click", async () => {
+        if (confirm("WARNING: This will permanently wipe all uploaded live stock data from this browser. Proceed?")) {
+          await clearAllDayRecords();
+          await refreshDayList();
+          renderManageList();
+          document.getElementById("manageModal").classList.add("hidden");
+          alert("All historical records have been cleared.");
+        }
+      });
 
       // Backup Download Action
       document.getElementById("btnBackup").addEventListener("click", () => {
