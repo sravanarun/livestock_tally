@@ -26,7 +26,7 @@
         </div>
         <div>
           <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-tight">Live Stock Desk</h1>
-          <p class="text-xs text-slate-500">Daily Opening & Closing Counter Tally</p>
+          <p class="text-xs text-slate-500">Daily Opening, Midday & Closing Counter Tally</p>
         </div>
       </div>
 
@@ -53,8 +53,8 @@
         <div class="flex items-center space-x-3">
           <div class="text-2xl text-slate-400">📄</div>
           <div>
-            <p class="text-sm font-semibold text-slate-800">Upload Morning Live Stock File</p>
-            <p class="text-xs text-slate-500">Drag & drop raw Excel report or click browse</p>
+            <p class="text-sm font-semibold text-slate-800">Upload Live Stock Report</p>
+            <p class="text-xs text-slate-500">Morning dump = Opening | Later dumps = Temporary Closing</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -72,7 +72,7 @@
           <span id="mapBadge" class="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-800">Loading Map...</span>
         </div>
         <div class="mt-2 flex items-center justify-between text-xs text-slate-600">
-          <span>Saved Snapshot Dates:</span>
+          <span>Tracked Audit Dates:</span>
           <span id="storedCount" class="font-bold text-slate-800">0 days</span>
         </div>
       </div>
@@ -106,7 +106,7 @@
       <div>
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Select Counter:</p>
         <div id="counterButtons" class="flex flex-wrap gap-2">
-          <!-- Populated dynamically: CHAIN, BANGLE, RING, etc. -->
+          <!-- Populated dynamically -->
         </div>
       </div>
     </section>
@@ -138,11 +138,14 @@
 
         <!-- Closing Balance Card -->
         <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-          <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+          <div id="closingAccent" class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
           <div class="flex justify-between items-start mb-3">
             <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Closing Stock</span>
-              <p id="closingDateSub" class="text-xs text-slate-400 mt-0.5">Next Morning Dump (EOD)</p>
+              <div class="flex items-center gap-2">
+                <span id="closingTitle" class="text-xs font-bold uppercase tracking-wider text-emerald-600">Closing Stock</span>
+                <span id="closingStatusBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-100 text-amber-800">Temporary</span>
+              </div>
+              <p id="closingDateSub" class="text-xs text-slate-400 mt-0.5">Finalized</p>
             </div>
             <span class="text-2xl">🌙</span>
           </div>
@@ -213,7 +216,7 @@
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 1;
+    const DB_VERSION = 2; // Upgraded version for full day storage
     let db;
 
     function openDatabase() {
@@ -221,8 +224,9 @@
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (e) => {
           const dbInstance = e.target.result;
-          if (!dbInstance.objectStoreNames.contains("snapshots")) {
-            dbInstance.createObjectStore("snapshots", { keyPath: "date" });
+          // Create or maintain daily store
+          if (!dbInstance.objectStoreNames.contains("days")) {
+            dbInstance.createObjectStore("days", { keyPath: "date" });
           }
         };
         request.onsuccess = (e) => {
@@ -233,20 +237,30 @@
       });
     }
 
-    async function saveSnapshot(snapshot) {
+    async function saveDayRecord(record) {
       return new Promise((resolve, reject) => {
-        const tx = db.transaction("snapshots", "readwrite");
-        const store = tx.objectStore("snapshots");
-        store.put(snapshot);
+        const tx = db.transaction("days", "readwrite");
+        const store = tx.objectStore("days");
+        store.put(record);
         tx.oncomplete = () => resolve();
         tx.onerror = (e) => reject(e);
       });
     }
 
-    async function getAllSnapshots() {
+    async function getDayRecord(dateStr) {
       return new Promise((resolve, reject) => {
-        const tx = db.transaction("snapshots", "readonly");
-        const store = tx.objectStore("snapshots");
+        const tx = db.transaction("days", "readonly");
+        const store = tx.objectStore("days");
+        const req = store.get(dateStr);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllDayRecords() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readonly");
+        const store = tx.objectStore("days");
         const request = store.getAll();
         request.onsuccess = () => resolve(request.result);
         request.onerror = (e) => reject(e);
@@ -255,34 +269,33 @@
 
     // --- State Variables ---
     let mapping = {
-      groups: {},       // Original Group -> Final Group
-      categories: {},   // Original Category -> Final Category
-      counters: {}      // COMBINED (FinalGroup + FinalCategory) -> COUNTER
+      groups: {},
+      categories: {},
+      counters: {}
     };
     let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING"];
     let selectedCounter = "CHAIN";
-    let allSnapshots = [];
+    let allDayRecords = [];
 
     // --- Initialize Application ---
     window.addEventListener("DOMContentLoaded", async () => {
-      // Request persistent browser storage so it never wipes automatically
       if (navigator.storage && navigator.storage.persist) {
         navigator.storage.persist();
       }
 
       await openDatabase();
       await loadMappingMaster();
-      await refreshSnapshotList();
+      await refreshDayList();
 
       setupEventListeners();
     });
 
-    // --- Dynamically Read Stock_related_map.xlsx ---
+    // --- Load Stock_related_map.xlsx Dynamically ---
     async function loadMappingMaster() {
       const badge = document.getElementById("mapBadge");
       try {
         const res = await fetch("Stock_related_map.xlsx");
-        if (!res.ok) throw new Error("Could not find Stock_related_map.xlsx in root directory");
+        if (!res.ok) throw new Error("Could not find Stock_related_map.xlsx");
         const arrayBuffer = await res.arrayBuffer();
         const wb = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -354,7 +367,7 @@
       });
     }
 
-    // --- Parse Morning Live Stock File ---
+    // --- Parse Live Stock File with Dynamic Opening vs Closing Logic ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -364,9 +377,14 @@
           const firstSheetName = workbook.SheetNames[0];
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
 
-          // Extract date from filename (e.g., Live_Stock_Inventory_05-10-2026_10-39-04 AM.xlsx)
+          // Extract date and time from filename
+          // e.g.: Live_Stock_Inventory_05-10-2026_10-39-04 AM.xlsx
           const dateMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{4})/);
+          const timeMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{2}\s*[AP]M)/i);
+
           let fileDate = "";
+          let fileTime = timeMatch ? timeMatch[1].replace(/[-_]/g, ":") : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
           if (dateMatch) {
             fileDate = dateMatch[1].replace(/_/g, "-");
           } else {
@@ -374,7 +392,7 @@
             fileDate = `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
           }
 
-          // Aggregate counters and categories
+          // Compute aggregates
           const counterAggregates = {};
           availableCounters.forEach(c => {
             counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
@@ -411,7 +429,7 @@
               counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
             }
 
-            // Add to specific counter
+            // Counter aggregate
             counterAggregates[counter].qty += qty;
             counterAggregates[counter].gross += gross;
             counterAggregates[counter].value += val;
@@ -423,7 +441,7 @@
             counterAggregates[counter].categories[finalCat].gross += gross;
             counterAggregates[counter].categories[finalCat].value += val;
 
-            // Add to ALL Counter
+            // ALL aggregate
             counterAggregates["ALL"].qty += qty;
             counterAggregates["ALL"].gross += gross;
             counterAggregates["ALL"].value += val;
@@ -436,32 +454,76 @@
             counterAggregates["ALL"].categories[finalCat].value += val;
           });
 
-          // Build snapshot record
-          const snapshot = {
-            date: fileDate, // Key: DD-MM-YYYY
-            timestamp: new Date().toISOString(),
-            fileName: file.name,
-            counters: counterAggregates
-          };
+          // Fetch existing day record if present
+          let dayRecord = await getDayRecord(fileDate);
+          let alertMsg = "";
 
-          await saveSnapshot(snapshot);
-          await refreshSnapshotList();
+          if (!dayRecord || !dayRecord.opening) {
+            // First file uploaded for this date = OPENING STOCK
+            dayRecord = {
+              date: fileDate,
+              opening: {
+                time: fileTime,
+                fileName: file.name,
+                counters: counterAggregates
+              },
+              closing: dayRecord ? dayRecord.closing : null,
+              isTemporaryClosing: dayRecord ? dayRecord.isTemporaryClosing : false
+            };
+            alertMsg = `Saved ${fileDate} as OPENING stock (${fileTime}).`;
+
+            // Auto-finalization: If the previous day exists and has a temporary closing or no closing,
+            // this morning dump permanently finalizes yesterday's closing!
+            const allDays = await getAllDayRecords();
+            const sortedDates = allDays.map(d => d.date).sort((a,b) => {
+              const [d1, m1, y1] = a.split("-").map(Number);
+              const [d2, m2, y2] = b.split("-").map(Number);
+              return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
+            });
+            const prevIndex = sortedDates.indexOf(fileDate) - 1;
+            if (prevIndex >= 0) {
+              const prevDateStr = sortedDates[prevIndex];
+              const prevDayRecord = await getDayRecord(prevDateStr);
+              if (prevDayRecord) {
+                // Permanently set yesterday's closing to match today's opening dump
+                prevDayRecord.closing = {
+                  time: `${fileDate} morning (${fileTime})`,
+                  fileName: file.name,
+                  counters: counterAggregates
+                };
+                prevDayRecord.isTemporaryClosing = false; // PERMANENT
+                await saveDayRecord(prevDayRecord);
+              }
+            }
+
+          } else {
+            // Subsequent file uploaded on the SAME date = TEMPORARY CLOSING STOCK
+            dayRecord.closing = {
+              time: fileTime,
+              fileName: file.name,
+              counters: counterAggregates
+            };
+            dayRecord.isTemporaryClosing = true; // Mark as temporary until next morning dump
+            alertMsg = `Updated ${fileDate} with TEMPORARY CLOSING stock (${fileTime}).`;
+          }
+
+          await saveDayRecord(dayRecord);
+          await refreshDayList();
           document.getElementById("dateSelect").value = fileDate;
           renderDashboard();
-          alert(`Successfully saved stock snapshot for: ${fileDate}`);
+          alert(alertMsg);
         } catch (err) {
-          console.error("Error reading file:", err);
+          console.error("Error processing file:", err);
           alert("Error parsing live stock file. Please make sure it is a valid live stock Excel file.");
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // --- Date List & Sorting ---
-    async function refreshSnapshotList() {
-      allSnapshots = await getAllSnapshots();
-      // Sort dates chronologically: oldest first -> newest last
-      allSnapshots.sort((a, b) => {
+    // --- Refresh Day Dropdown ---
+    async function refreshDayList() {
+      allDayRecords = await getAllDayRecords();
+      allDayRecords.sort((a, b) => {
         const [d1, m1, y1] = a.date.split("-").map(Number);
         const [d2, m2, y2] = b.date.split("-").map(Number);
         return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
@@ -470,45 +532,69 @@
       const select = document.getElementById("dateSelect");
       select.innerHTML = "";
 
-      if (allSnapshots.length === 0) {
+      if (allDayRecords.length === 0) {
         select.innerHTML = `<option value="">No snapshots uploaded</option>`;
       } else {
-        allSnapshots.forEach(snap => {
+        allDayRecords.forEach(rec => {
           const opt = document.createElement("option");
-          opt.value = snap.date;
-          opt.textContent = snap.date;
+          opt.value = rec.date;
+          opt.textContent = rec.date;
           select.appendChild(opt);
         });
-        // Select latest date by default
-        select.value = allSnapshots[allSnapshots.length - 1].date;
+        // Select latest day by default
+        select.value = allDayRecords[allDayRecords.length - 1].date;
       }
 
-      document.getElementById("storedCount").textContent = `${allSnapshots.length} day${allSnapshots.length === 1 ? "" : "s"}`;
+      document.getElementById("storedCount").textContent = `${allDayRecords.length} day${allDayRecords.length === 1 ? "" : "s"}`;
       renderDashboard();
     }
 
-    // --- Dashboard Renderer (Auditing & Opening/Closing Logic) ---
+    // --- Dashboard Renderer ---
     function renderDashboard() {
       const selectedDate = document.getElementById("dateSelect").value;
-      if (!selectedDate || allSnapshots.length === 0) {
+      if (!selectedDate || allDayRecords.length === 0) {
         resetDashboard();
         return;
       }
 
-      const currentIndex = allSnapshots.findIndex(s => s.date === selectedDate);
-      if (currentIndex === -1) return;
+      const dayRecord = allDayRecords.find(d => d.date === selectedDate);
+      if (!dayRecord) return;
 
-      // The selected date's morning dump IS the OPENING of that day
-      const dayOpeningSnap = allSnapshots[currentIndex];
-      
-      // The CLOSING of that day is the NEXT morning's dump
-      const dayClosingSnap = (currentIndex < allSnapshots.length - 1) ? allSnapshots[currentIndex + 1] : null;
+      const hasOpening = !!dayRecord.opening;
+      const hasClosing = !!dayRecord.closing;
+      const isTemp = dayRecord.isTemporaryClosing;
 
-      // Card Subtitles
-      document.getElementById("openingDateSub").textContent = `${selectedDate} Morning Dump`;
-      document.getElementById("closingDateSub").textContent = dayClosingSnap 
-        ? `${dayClosingSnap.date} Morning (EOD)` 
-        : "Pending (Day In Progress)";
+      // Header subtitles
+      document.getElementById("openingDateSub").textContent = hasOpening 
+        ? `${dayRecord.opening.time}` 
+        : "Not Recorded";
+
+      const badge = document.getElementById("closingStatusBadge");
+      const closingAccent = document.getElementById("closingAccent");
+      const closingTitle = document.getElementById("closingTitle");
+
+      if (hasClosing) {
+        if (isTemp) {
+          badge.textContent = "Temporary";
+          badge.className = "text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-100 text-amber-800";
+          badge.classList.remove("hidden");
+          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
+          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
+          document.getElementById("closingDateSub").textContent = `As of ${dayRecord.closing.time}`;
+        } else {
+          badge.textContent = "Finalized";
+          badge.className = "text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-100 text-emerald-800";
+          badge.classList.remove("hidden");
+          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
+          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
+          document.getElementById("closingDateSub").textContent = `Final Closing`;
+        }
+      } else {
+        badge.classList.add("hidden");
+        closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
+        closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
+        document.getElementById("closingDateSub").textContent = "Pending (Upload midday or tomorrow morning)";
+      }
 
       const showGross = document.getElementById("chkGrossWeight").checked;
       const showVal = document.getElementById("chkPreTax").checked;
@@ -518,20 +604,24 @@
       document.getElementById("diffExtra").classList.toggle("hidden", !showGross && !showVal);
 
       // Data extraction
-      const openData = dayOpeningSnap.counters[selectedCounter] || { qty: 0, gross: 0, value: 0, categories: {} };
-      const closeData = dayClosingSnap ? (dayClosingSnap.counters[selectedCounter] || { qty: 0, gross: 0, value: 0, categories: {} }) : null;
+      const openData = (hasOpening && dayRecord.opening.counters[selectedCounter]) 
+        ? dayRecord.opening.counters[selectedCounter] 
+        : { qty: 0, gross: 0, value: 0, categories: {} };
+
+      const closeData = (hasClosing && dayRecord.closing.counters[selectedCounter]) 
+        ? dayRecord.closing.counters[selectedCounter] 
+        : null;
 
       // 1. OPENING CARD
-      document.getElementById("openQty").textContent = openData.qty.toLocaleString();
-      document.getElementById("openGross").textContent = `${openData.gross.toFixed(3)} g`;
-      document.getElementById("openVal").textContent = `₹${Math.round(openData.value).toLocaleString()}`;
+      document.getElementById("openQty").textContent = hasOpening ? openData.qty.toLocaleString() : "—";
+      document.getElementById("openGross").textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
+      document.getElementById("openVal").textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
 
       // 2. CLOSING CARD & NET MOVEMENT
       const closeQtyUnit = document.getElementById("closeQtyUnit");
       const diffQtyUnit = document.getElementById("diffQtyUnit");
 
-      if (dayClosingSnap) {
-        // Next day's file exists, so day is completed
+      if (hasClosing) {
         closeQtyUnit.classList.remove("hidden");
         diffQtyUnit.classList.remove("hidden");
 
@@ -550,7 +640,6 @@
         document.getElementById("diffGross").textContent = `${diffGross >= 0 ? "+" : ""}${diffGross.toFixed(3)} g`;
         document.getElementById("diffVal").textContent = `${diffVal >= 0 ? "+" : ""}₹${Math.round(diffVal).toLocaleString()}`;
       } else {
-        // Today is active, closing is not recorded yet
         closeQtyUnit.classList.add("hidden");
         diffQtyUnit.classList.add("hidden");
 
@@ -590,16 +679,16 @@
           const dQ = cQ - oQ;
           tr.innerHTML = `
             <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
-            <td class="px-5 py-3 text-right font-semibold text-slate-900">${oQ}</td>
+            <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
             <td class="px-5 py-3 text-right text-slate-600">${cQ}</td>
             <td class="px-5 py-3 text-right font-semibold ${dQ > 0 ? 'text-emerald-600' : dQ < 0 ? 'text-rose-600' : 'text-slate-500'}">
-              ${dQ > 0 ? `+${dQ}` : dQ}
+              ${hasOpening ? (dQ > 0 ? `+${dQ}` : dQ) : "—"}
             </td>
           `;
         } else {
           tr.innerHTML = `
             <td class="px-5 py-3 font-medium text-slate-800">${cat}</td>
-            <td class="px-5 py-3 text-right font-semibold text-slate-900">${oQ}</td>
+            <td class="px-5 py-3 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
             <td class="px-5 py-3 text-right text-slate-400 italic">Pending</td>
             <td class="px-5 py-3 text-right text-slate-400 italic">—</td>
           `;
@@ -615,7 +704,7 @@
       document.getElementById("breakdownTbody").innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Upload a file to begin</td></tr>`;
     }
 
-    // --- User Actions & Listeners ---
+    // --- Event Listeners ---
     function setupEventListeners() {
       const fileInput = document.getElementById("fileInput");
       const dropArea = document.getElementById("dropArea");
@@ -639,15 +728,14 @@
         if (e.dataTransfer.files.length > 0) processLiveStockFile(e.dataTransfer.files[0]);
       });
 
-      // Dropdown & Checkbox Listeners
       document.getElementById("dateSelect").addEventListener("change", renderDashboard);
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
       // Backup Download Action
       document.getElementById("btnBackup").addEventListener("click", () => {
-        if (allSnapshots.length === 0) return alert("No history to backup yet.");
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allSnapshots, null, 2));
+        if (allDayRecords.length === 0) return alert("No history to backup yet.");
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allDayRecords, null, 2));
         const dl = document.createElement("a");
         dl.setAttribute("href", dataStr);
         dl.setAttribute("download", `stock_history_backup_${new Date().toISOString().slice(0, 10)}.json`);
@@ -666,9 +754,9 @@
             const list = JSON.parse(evt.target.result);
             if (!Array.isArray(list)) throw new Error("Invalid backup format");
             for (const item of list) {
-              await saveSnapshot(item);
+              await saveDayRecord(item);
             }
-            await refreshSnapshotList();
+            await refreshDayList();
             alert("History restored successfully!");
           } catch (err) {
             alert("Failed to restore backup: " + err.message);
@@ -677,7 +765,7 @@
         reader.readAsText(file);
       });
 
-      // Copy Table for Stock Register
+      // Copy for Stock Book
       document.getElementById("btnCopyReport").addEventListener("click", () => {
         const date = document.getElementById("dateSelect").value;
         const rows = Array.from(document.querySelectorAll("#breakdownTbody tr"));
