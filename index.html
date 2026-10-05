@@ -438,7 +438,6 @@
       return Number(catData) || 0;
     }
 
-    // --- Initialize Application ---
     window.addEventListener("DOMContentLoaded", async () => {
       if (navigator.storage && navigator.storage.persist) {
         navigator.storage.persist();
@@ -536,13 +535,14 @@
       return null;
     }
 
+    // STRICT RESOLUTION RULE: GEP/TEP OVERRIDES EVERYTHING
     function resolveCounter(origGroup, origCat, binCode) {
       const cleanBin = String(binCode || "").trim().toUpperCase();
       if (cleanBin === "GEP") {
-        return { counter: "GEP", finalGroup: "GEP", finalCat: origCat || "OTHERS" };
+        return { counter: "GEP", finalGroup: "GEP", finalCat: "GEP" };
       }
       if (cleanBin === "TEP") {
-        return { counter: "TEP", finalGroup: "TEP", finalCat: origCat || "OTHERS" };
+        return { counter: "TEP", finalGroup: "TEP", finalCat: "TEP" };
       }
 
       let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
@@ -595,7 +595,7 @@
             const unitWeight = Number(row["Unit Weight"] || 0);
 
             let categoryDisplayKey = finalCat;
-            if (counter === "BANGLE" || finalCat === "BANGLES") {
+            if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
               if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
               else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
@@ -604,7 +604,7 @@
               else categoryDisplayKey = "Other Bangles";
             }
 
-            if (counter === "COIN" || finalCat === "COINS") {
+            if (counter === "COIN") {
               const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
               const isSilver = (coinKaratChar === "A") || (origGroup.toLowerCase().includes("silver"));
               const targetDict = isSilver ? coinData.silver : coinData.gold;
@@ -713,7 +713,7 @@
             const qty = Number(r["ReceivedQty"] || 0);
 
             let catKey = finalCat;
-            if (counter === "BANGLE" || finalCat === "BANGLES") {
+            if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
               if (setChar === "1") catKey = "Set 1 (Single)";
               else if (setChar === "2") catKey = "Set 2 (Pair)";
@@ -769,7 +769,7 @@
             const qty = Number(r["Qty"] || 0);
 
             let catKey = finalCat;
-            if (counter === "BANGLE" || finalCat === "BANGLES") {
+            if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
               if (setChar === "1") catKey = "Set 1 (Single)";
               else if (setChar === "2") catKey = "Set 2 (Pair)";
@@ -830,7 +830,7 @@
             const qty = Number(r["Quantity"] || 0);
 
             let catKey = finalCat;
-            if (counter === "BANGLE" || finalCat === "BANGLES") {
+            if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
               if (setChar === "1") catKey = "Set 1 (Single)";
               else if (setChar === "2") catKey = "Set 2 (Pair)";
@@ -1022,7 +1022,6 @@
       };
     }
 
-    // --- Dashboard Renderer ---
     function renderDashboard() {
       const selectedDate = document.getElementById("dateSelect").value;
       if (!selectedDate || allDayRecords.length === 0) {
@@ -1230,7 +1229,7 @@
             <table class="w-full text-left text-xs" id="reconcileTable">
               <thead class="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
                 <tr>
-                  <th class="px-4 py-3">${selectedCounter === "BANGLE" ? "Bangle Set" : "Category"}</th>
+                  <th class="px-4 py-3">${selectedCounter === "BANGLE" ? "Bangle Set" : (selectedCounter === "GEP" || selectedCounter === "TEP" ? "Counter Group" : "Category")}</th>
                   <th class="px-3 py-3 text-right">Opening</th>
                   <th class="px-3 py-3 text-right text-blue-700">+Rec</th>
                   <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
@@ -1357,7 +1356,6 @@
       renderManageMonthsList();
     }
 
-    // Tab 1: Live Stock Days
     function renderManageDaysList() {
       const container = document.getElementById("manageListContainerDays");
       container.innerHTML = "";
@@ -1409,7 +1407,6 @@
       });
     }
 
-    // Tab 2: Monthly Transaction Reports
     async function renderManageMonthsList() {
       const container = document.getElementById("manageListContainerMonths");
       container.innerHTML = "";
@@ -1448,7 +1445,6 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
-            <!-- Receipt -->
             <div class="p-2.5 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
               <div>
                 <span class="text-[11px] font-bold text-blue-900 flex items-center gap-1">📥 Receipts (STM)</span>
@@ -1463,7 +1459,6 @@
               </div>
             </div>
 
-            <!-- Issue -->
             <div class="p-2.5 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
               <div>
                 <span class="text-[11px] font-bold text-purple-900 flex items-center gap-1">📤 Issues (Outward)</span>
@@ -1478,7 +1473,6 @@
               </div>
             </div>
 
-            <!-- Sales -->
             <div class="p-2.5 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
               <div>
                 <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1">🏷 Sales & GRN</span>
@@ -1558,7 +1552,6 @@
 
     // --- Event Listeners Setup ---
     function setupEventListeners() {
-      // Manage Modal Tabs Switching
       const tabBtnDays = document.getElementById("tabBtnDays");
       const tabBtnMonths = document.getElementById("tabBtnMonths");
       const containerDays = document.getElementById("manageListContainerDays");
@@ -1579,7 +1572,6 @@
         renderManageMonthsList();
       });
 
-      // File Drag & Drop Inputs
       const fileLive = document.getElementById("fileLive");
       const dropLive = document.getElementById("dropAreaLive");
       fileLive.addEventListener("change", (e) => { if (e.target.files.length > 0) processLiveStockFile(e.target.files[0]); });
@@ -1608,7 +1600,6 @@
       dropSales.addEventListener("dragleave", () => { dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); });
       dropSales.addEventListener("drop", (e) => { e.preventDefault(); dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); if (e.dataTransfer.files.length > 0) processSalesFile(e.dataTransfer.files[0]); });
 
-      // Month Selection & Lock
       document.getElementById("monthSelect").addEventListener("change", async (e) => {
         currentActiveMonth = e.target.value;
         currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
@@ -1632,9 +1623,12 @@
       document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
       document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
 
-      // Manage Uploads Modal
       document.getElementById("btnOpenManage").addEventListener("click", () => {
-        renderManageList();
+        try {
+          renderManageList();
+        } catch (e) {
+          console.error("renderManageList error:", e);
+        }
         document.getElementById("manageModal").classList.remove("hidden");
       });
 
@@ -1653,7 +1647,6 @@
         }
       });
 
-      // Backup & Restore
       document.getElementById("btnBackup").addEventListener("click", async () => {
         const days = await getAllDayRecords();
         const months = await getAllMonthRecords();
