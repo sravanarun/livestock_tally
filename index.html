@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Store Inventory Desk</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for parsing XLSX in browser -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -15,25 +17,29 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-  <!-- Header -->
+  <!-- Top Navigation Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center space-x-3">
-        <div class="bg-amber-500 text-white p-2 rounded-lg font-bold text-lg leading-none">💎</div>
+        <div class="bg-amber-500 text-white p-2 rounded-lg shadow-sm font-bold text-lg leading-none">
+          💎
+        </div>
         <div>
-          <h1 class="text-lg font-bold text-slate-900 leading-tight">Live Stock Desk</h1>
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-tight">Live Stock Desk</h1>
           <p class="text-xs text-slate-500">Daily Opening, Closing & Transaction Reconciliation</p>
         </div>
       </div>
+
+      <!-- Quick Action Controls -->
       <div class="flex items-center gap-2">
-        <button id="btnOpenManage" type="button" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md border border-slate-300 cursor-pointer">
-          ⚙ Manage Uploads
+        <button id="btnOpenManage" type="button" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1.5 cursor-pointer">
+          <span>⚙</span> Manage Uploads
         </button>
-        <button id="btnBackup" type="button" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md border border-slate-300">
-          ⬇ Backup
+        <button id="btnBackup" type="button" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+          ⬇ Export Backup
         </button>
-        <label for="restoreInput" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md border border-slate-300 cursor-pointer">
-          ⬆ Restore
+        <label for="restoreInput" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md cursor-pointer transition-colors border border-slate-300">
+          ⬆ Restore Backup
         </label>
         <input type="file" id="restoreInput" accept=".json" class="hidden" />
       </div>
@@ -43,111 +49,1829 @@
   <!-- Main Container -->
   <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1 flex flex-col gap-6">
 
-    <!-- Upload Section -->
+    <!-- UPLOAD DASHBOARD -->
     <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
-          <h2 class="text-sm font-bold text-slate-900">Upload Data Reports</h2>
-          <p class="text-xs text-slate-500">Daily live stock dump & monthly transaction summaries</p>
+          <h2 class="text-sm font-bold text-slate-900">Upload Data Files</h2>
+          <p class="text-xs text-slate-500">Daily live stock report + Cumulative monthly transactions</p>
         </div>
         <div class="flex items-center gap-3">
           <span id="mapBadge" class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-800">Loading Map...</span>
           <div class="flex items-center gap-2">
             <label for="monthSelect" class="text-xs font-semibold text-slate-600">Month:</label>
-            <select id="monthSelect" class="text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1 font-semibold text-slate-800"></select>
-            <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 cursor-pointer">
+            <select id="monthSelect" class="text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1 font-semibold text-slate-800 focus:outline-none"></select>
+            <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors cursor-pointer">
               🔒 Archive Month
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 6 Upload Cards in Clean 3x2 Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <!-- Upload Cards Grid: 6 Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         <!-- 1. Daily Live Stock -->
-        <div class="border-2 border-dashed border-amber-300 bg-amber-50/40 rounded-xl p-3 flex items-center justify-between" id="dropAreaLive">
+        <div class="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaLive">
           <div>
-            <span class="text-xs font-bold text-amber-900 block">📄 Daily Live Stock</span>
-            <span id="liveStatus" class="text-[10px] text-slate-400">Ready</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-amber-900">Daily Live Stock</span>
+              <span class="text-base">📄</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">Morning snapshot</p>
           </div>
-          <input type="file" id="fileLive" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileLive').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="liveStatus" class="text-[10px] text-slate-400">Ready</span>
+            <input type="file" id="fileLive" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileLive').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
 
         <!-- 2. Stock Receipt (STM) -->
-        <div class="border-2 border-dashed border-slate-200 bg-white rounded-xl p-3 flex items-center justify-between" id="dropAreaReceipt">
+        <div class="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaReceipt">
           <div>
-            <span class="text-xs font-bold text-blue-900 block">📥 Stock Receipt (STM)</span>
-            <span id="receiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-blue-900">Receipt (STM)</span>
+              <span class="text-base">📥</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">Store STM receipts</p>
           </div>
-          <input type="file" id="fileReceipt" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileReceipt').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="receiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <input type="file" id="fileReceipt" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileReceipt').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
 
-        <!-- 3. Stock Issue -->
-        <div class="border-2 border-dashed border-slate-200 bg-white rounded-xl p-3 flex items-center justify-between" id="dropAreaIssue">
+        <!-- 3. Stock Issue (Outward) -->
+        <div class="border-2 border-dashed border-slate-200 hover:border-purple-400 bg-white rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaIssue">
           <div>
-            <span class="text-xs font-bold text-purple-900 block">📤 Stock Issue (Outward)</span>
-            <span id="issueStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-purple-900">Stock Issue</span>
+              <span class="text-base">📤</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">Outward (incl. GEP)</p>
           </div>
-          <input type="file" id="fileIssue" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileIssue').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="issueStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <input type="file" id="fileIssue" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileIssue').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
 
         <!-- 4. Sales Report POS -->
-        <div class="border-2 border-dashed border-slate-200 bg-white rounded-xl p-3 flex items-center justify-between" id="dropAreaSales">
+        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-white rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaSales">
           <div>
-            <span class="text-xs font-bold text-emerald-900 block">🏷 Sales POS & GRN</span>
-            <span id="salesStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-emerald-900">Sales POS</span>
+              <span class="text-base">🏷</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">Sales & GRN returns</p>
           </div>
-          <input type="file" id="fileSales" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileSales').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="salesStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <input type="file" id="fileSales" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileSales').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
 
         <!-- 5. GEP Receipt -->
-        <div class="border-2 border-dashed border-slate-200 bg-white rounded-xl p-3 flex items-center justify-between" id="dropAreaGepReceipt">
+        <div class="border-2 border-dashed border-slate-200 hover:border-amber-400 bg-white rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaGepReceipt">
           <div>
-            <span class="text-xs font-bold text-amber-900 block">🪙 GEP Receipt</span>
-            <span id="gepReceiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-amber-900">GEP Receipt</span>
+              <span class="text-base">🪙</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">Old gold inwarding</p>
           </div>
-          <input type="file" id="fileGepReceipt" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileGepReceipt').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="gepReceiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <input type="file" id="fileGepReceipt" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileGepReceipt').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
 
         <!-- 6. TEP Receipt -->
-        <div class="border-2 border-dashed border-slate-200 bg-white rounded-xl p-3 flex items-center justify-between" id="dropAreaTepReceipt">
+        <div class="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-white rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaTepReceipt">
           <div>
-            <span class="text-xs font-bold text-indigo-900 block">📦 TEP Receipt</span>
-            <span id="tepReceiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-indigo-900">TEP Receipt</span>
+              <span class="text-base">📦</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-tight">TEP inwarding</p>
           </div>
-          <input type="file" id="fileTepReceipt" accept=".xlsx, .xls" class="hidden" />
-          <button onclick="document.getElementById('fileTepReceipt').click()" type="button" class="text-xs font-semibold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg cursor-pointer">
-            Browse
-          </button>
+          <div class="mt-3 flex items-center justify-between">
+            <span id="tepReceiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+            <input type="file" id="fileTepReceipt" accept=".xlsx, .xls" class="hidden" />
+            <button onclick="document.getElementById('fileTepReceipt').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors cursor-pointer">
+              Browse
+            </button>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Controls -->
+    <!-- Filter & View Controls -->
     <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <!-- Date Selector -->
         <div class="flex items-center space-x-3">
           <label for="dateSelect" class="text-sm font-semibold text-slate-700">Audit Date:</label>
-          <select id="dateSelect" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm font-medium rounded-lg px-3 py-1.5 focus:outline-none min-w-[150px]">
+          <select id="dateSelect" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm font-medium rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none min-w-[150px]">
             <option value="">No snapshots uploaded</option>
           </select>
         </div>
+
+        <!-- Optional Display Toggles -->
         <div class="flex items-center space-x-4 text-xs font-medium text-slate-600">
           <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="chkGrossWeight" class="rounded text-amber-500 mr-1.5" /> Show Gross Wt (g)
+            <input type="checkbox" id="chkGrossWeight" class="rounded text-amber-500 focus:ring-amber-400 mr-1.5" />
+            Show Gross Weight (g)
           </label>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="chkPreTax" class="rounded text-amber-500 focus:ring-amber-400 mr-1.5" />
+            Show Pre-Tax Value (₹)
+          </label>
+        </div>
+      </div>
+
+      <!-- Counter Buttons / Pills -->
+      <div>
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Select Counter:</p>
+        <div id="counterButtons" class="flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Main Output View: Macro Cards -->
+    <div id="dashboardView" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Opening Balance Card -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Opening Stock</span>
+              <p id="openingDateSub" class="text-[11px] text-slate-400 mt-0.5">Morning Dump</p>
+            </div>
+            <span class="text-xl">🌅</span>
+          </div>
+          <div class="mt-2">
+            <div class="flex items-baseline space-x-1">
+              <span id="openQty" class="text-3xl font-extrabold text-slate-900">0</span>
+              <span class="text-xs font-semibold text-slate-500">pcs</span>
+            </div>
+            <div id="openExtra" class="mt-2 space-y-0.5 text-xs text-slate-600 border-t border-slate-100 pt-1.5 hidden">
+              <p>Gross: <span id="openGross" class="font-semibold text-slate-800">0.000 g</span></p>
+              <p>Value: <span id="openVal" class="font-semibold text-slate-800">₹0</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Movement Card (Transactions) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Day Transactions</span>
+              <p id="transSummarySub" class="text-[11px] text-slate-400 mt-0.5">+Rec/GRN -Iss/Sold</p>
+            </div>
+            <span class="text-xl">🔄</span>
+          </div>
+          <div class="mt-2">
+            <div class="flex items-baseline space-x-1">
+              <span id="transQty" class="text-3xl font-extrabold text-slate-900">0</span>
+              <span class="text-xs font-semibold text-slate-500">pcs</span>
+            </div>
+            <div class="mt-1 flex flex-wrap gap-x-2 text-[11px] text-slate-500 font-medium">
+              <span>Rec: <b id="txRec" class="text-blue-600">0</b></span>
+              <span>GRN: <b id="txGrn" class="text-emerald-600">0</b></span>
+              <span>Iss: <b id="txIss" class="text-purple-600">0</b></span>
+              <span>Sold: <b id="txSold" class="text-rose-600">0</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Physical Closing Balance Card -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div id="closingAccent" class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span id="closingTitle" class="text-xs font-bold uppercase tracking-wider text-emerald-600">Closing Stock</span>
+                <span id="closingStatusBadge" class="hidden text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800">Finalized</span>
+              </div>
+              <p id="closingDateSub" class="text-[11px] text-slate-400 mt-0.5">Physical</p>
+            </div>
+            <span class="text-xl">🌙</span>
+          </div>
+          <div class="mt-2">
+            <div class="flex items-baseline space-x-1">
+              <span id="closeQty" class="text-3xl font-extrabold text-slate-900">0</span>
+              <span id="closeQtyUnit" class="text-xs font-semibold text-slate-500">pcs</span>
+            </div>
+            <div id="closeExtra" class="mt-2 space-y-0.5 text-xs text-slate-600 border-t border-slate-100 pt-1.5 hidden">
+              <p>Gross: <span id="closeGross" class="font-semibold text-slate-800">0.000 g</span></p>
+              <p>Value: <span id="closeVal" class="font-semibold text-slate-800">₹0</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tally Difference Card -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div id="diffAccent" class="absolute top-0 left-0 w-1.5 h-full bg-slate-400"></div>
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <span id="diffTitle" class="text-xs font-bold uppercase tracking-wider text-slate-600">Tally Difference</span>
+              <p class="text-[11px] text-slate-400 mt-0.5">Physical − System</p>
+            </div>
+            <span class="text-xl">⚖️</span>
+          </div>
+          <div class="mt-2">
+            <div class="flex items-baseline space-x-1">
+              <span id="diffQty" class="text-3xl font-extrabold text-slate-900">0</span>
+              <span id="diffQtyUnit" class="text-xs font-semibold text-slate-500">pcs</span>
+            </div>
+            <p id="diffStatusText" class="text-xs font-medium text-slate-500 mt-1">Balanced</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC DETAIL SECTION -->
+      <div id="detailSectionContainer"></div>
+    </div>
+  </main>
+
+  <!-- Manage Uploads Modal -->
+  <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Reports</h3>
+          <p class="text-xs text-slate-500">Review and delete specific day snapshots or monthly transaction files</p>
+        </div>
+        <button id="btnCloseManage" type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex border-b border-slate-200 bg-slate-100/70 px-6 pt-2">
+        <button id="tabBtnDays" type="button" class="pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all">
+          Daily Live Stock Snapshots
+        </button>
+        <button id="tabBtnMonths" type="button" class="pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all">
+          Monthly Transaction Reports
+        </button>
+      </div>
+
+      <!-- Tab Content 1: Daily Snapshots -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="manageListContainerDays"></div>
+
+      <!-- Tab Content 2: Monthly Transactions -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3 hidden" id="manageListContainerMonths"></div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button id="btnClearAll" type="button" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer">
+          Clear Entire Database
+        </button>
+        <button onclick="document.getElementById('manageModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- IndexedDB Configuration ---
+    const DB_NAME = "StoreStockDB";
+    const DB_VERSION = 5; // Upgraded version for GEP/TEP Receipts
+    let db;
+
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const dbInstance = e.target.result;
+          if (!dbInstance.objectStoreNames.contains("days")) {
+            dbInstance.createObjectStore("days", { keyPath: "date" });
+          }
+          if (!dbInstance.objectStoreNames.contains("monthly_transactions")) {
+            dbInstance.createObjectStore("monthly_transactions", { keyPath: "month" });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function saveDayRecord(record) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readwrite");
+        tx.objectStore("days").put(record);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getDayRecord(dateStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readonly");
+        const req = tx.objectStore("days").get(dateStr);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllDayRecords() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readonly");
+        const req = tx.objectStore("days").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteDayRecord(dateStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("days", "readwrite");
+        tx.objectStore("days").delete(dateStr);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function saveMonthRecord(record) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("monthly_transactions", "readwrite");
+        tx.objectStore("monthly_transactions").put(record);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getMonthRecord(monthStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("monthly_transactions", "readonly");
+        const req = tx.objectStore("monthly_transactions").get(monthStr);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllMonthRecords() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("monthly_transactions", "readonly");
+        const req = tx.objectStore("monthly_transactions").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteMonthRecord(monthStr) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("monthly_transactions", "readwrite");
+        tx.objectStore("monthly_transactions").delete(monthStr);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function clearAllData() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(["days", "monthly_transactions"], "readwrite");
+        tx.objectStore("days").clear();
+        tx.objectStore("monthly_transactions").clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    // --- State Variables ---
+    let mapping = { groups: {}, categories: {}, counters: {} };
+    let availableCounters = ["ALL", "CHAIN", "BANGLE", "RING", "EARRING", "STUDDED", "COLOR", "COIN", "WEDDING", "GEP", "TEP"];
+    let selectedCounter = "BANGLE";
+    let allDayRecords = [];
+    let currentActiveMonth = "2026-10";
+    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, grn: {} };
+
+    function getSafeQty(catData) {
+      if (catData === undefined || catData === null) return 0;
+      if (typeof catData === "number") return catData;
+      if (typeof catData === "object" && catData.qty !== undefined) return Number(catData.qty) || 0;
+      return Number(catData) || 0;
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist();
+      }
+
+      await openDatabase();
+      await loadMappingMaster();
+      await refreshMonthDropdown();
+      await refreshDayList();
+
+      setupEventListeners();
+    });
+
+    async function loadMappingMaster() {
+      const badge = document.getElementById("mapBadge");
+      try {
+        const res = await fetch("Stock_related_map.xlsx");
+        if (!res.ok) throw new Error("Could not find Stock_related_map.xlsx");
+        const arrayBuffer = await res.arrayBuffer();
+        const wb = XLSX.read(arrayBuffer, { type: "array" });
+
+        const groupSheet = wb.Sheets["Group"];
+        if (groupSheet) {
+          XLSX.utils.sheet_to_json(groupSheet).forEach(row => {
+            if (row["Original Group"] && row["Final Group"]) {
+              mapping.groups[String(row["Original Group"]).trim()] = String(row["Final Group"]).trim();
+            }
+          });
+        }
+
+        const catSheet = wb.Sheets["Category"];
+        if (catSheet) {
+          XLSX.utils.sheet_to_json(catSheet).forEach(row => {
+            if (row["Original Category"] && row["Final Category"]) {
+              mapping.categories[String(row["Original Category"]).trim()] = String(row["Final Category"]).trim();
+            }
+          });
+        }
+
+        const counterSheet = wb.Sheets["Counter"];
+        if (counterSheet) {
+          const counterSet = new Set(["ALL"]);
+          XLSX.utils.sheet_to_json(counterSheet).forEach(row => {
+            const combined = String(row["COMBINED"] || (row["GROUP"] + row["CATEGORY"])).trim();
+            const counter = String(row["COUNTER"]).trim();
+            mapping.counters[combined] = counter;
+            counterSet.add(counter);
+          });
+          counterSet.add("GEP");
+          counterSet.add("TEP");
+          availableCounters = Array.from(counterSet);
+        }
+
+        renderCounterButtons();
+        badge.textContent = "Map Active";
+        badge.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800";
+      } catch (err) {
+        console.warn("Map load warning:", err);
+        badge.textContent = "Map Missing";
+        badge.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-rose-100 text-rose-800";
+        renderCounterButtons();
+      }
+    }
+
+    function renderCounterButtons() {
+      const container = document.getElementById("counterButtons");
+      container.innerHTML = "";
+      availableCounters.forEach(cnt => {
+        const btn = document.createElement("button");
+        const isActive = cnt === selectedCounter;
+        btn.textContent = cnt;
+        btn.type = "button";
+        btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-sm cursor-pointer ${
+          isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+        }`;
+        btn.onclick = () => {
+          selectedCounter = cnt;
+          renderCounterButtons();
+          renderDashboard();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function normalizeDate(raw) {
+      if (!raw) return null;
+      if (raw instanceof Date) {
+        return `${String(raw.getDate()).padStart(2, "0")}-${String(raw.getMonth() + 1).padStart(2, "0")}-${raw.getFullYear()}`;
+      }
+      const str = String(raw).trim();
+      let m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+      if (m) return `${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[3]}`;
+      m = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (m) return `${String(m[3]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}-${m[1]}`;
+      return null;
+    }
+
+    // STRICT RESOLUTION RULE: GEP/TEP OVERRIDES EVERYTHING
+    function resolveCounter(origGroup, origCat, binCode) {
+      const cleanBin = String(binCode || "").trim().toUpperCase();
+      if (cleanBin === "GEP") {
+        return { counter: "GEP", finalGroup: "GEP", finalCat: "GEP" };
+      }
+      if (cleanBin === "TEP") {
+        return { counter: "TEP", finalGroup: "TEP", finalCat: "TEP" };
+      }
+
+      let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
+      const finalCat = mapping.categories[origCat] || origCat || "OTHERS";
+      const combined = finalGroup + finalCat;
+
+      let counter = mapping.counters[combined];
+      if (!counter) {
+        if (finalCat === "COINS") counter = "COIN";
+        else if (finalCat === "BANGLES") counter = "BANGLE";
+        else if (finalCat === "FINGER RING" || finalCat === "BRACELET") counter = "RING";
+        else if (finalCat === "CHAIN" || finalCat === "PENDANT") counter = "CHAIN";
+        else if (finalCat === "STUD EARRING" || finalCat === "DROP EARRING") counter = "EARRING";
+        else counter = "WEDDING";
+      }
+      return { counter, finalGroup, finalCat };
+    }
+
+    // --- Parse 1: Daily Live Stock ---
+    async function processLiveStockFile(file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+          const dateMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{4})/);
+          const timeMatch = file.name.match(/(\d{2}[-_]\d{2}[-_]\d{2}\s*[AP]M)/i);
+
+          let fileDate = dateMatch ? dateMatch[1].replace(/_/g, "-") : normalizeDate(new Date());
+          let fileTime = timeMatch ? timeMatch[1].replace(/[-_]/g, ":") : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          const counterAggregates = {};
+          availableCounters.forEach(c => {
+            counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
+          });
+          const coinData = { gold: {}, silver: {} };
+
+          rows.forEach(row => {
+            const itemCode = String(row["Item Code"] || "").trim();
+            const origGroup = String(row["Product Group Description"] || "").trim();
+            const origCat = String(row["Product Category Description"] || "").trim();
+            const binCode = String(row["Bin Code"] || "").trim().toUpperCase();
+
+            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
+            const qty = Number(row["Quantity"] || 1);
+            const gross = Number(row["Gross Weight"] || 0);
+            const val = Number(row["Final Price - Pre Tax Value"] || 0);
+            const unitWeight = Number(row["Unit Weight"] || 0);
+
+            let categoryDisplayKey = finalCat;
+            if (counter === "BANGLE") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
+              else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
+              else if (setChar === "4") categoryDisplayKey = "Set 4 (Set of 4)";
+              else if (setChar) categoryDisplayKey = `Set ${setChar}`;
+              else categoryDisplayKey = "Other Bangles";
+            }
+
+            if (counter === "COIN") {
+              const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
+              const isSilver = (coinKaratChar === "A") || (origGroup.toLowerCase().includes("silver"));
+              const targetDict = isSilver ? coinData.silver : coinData.gold;
+              targetDict[unitWeight] = (targetDict[unitWeight] || 0) + qty;
+            }
+
+            if (!counterAggregates[counter]) {
+              counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
+            }
+
+            counterAggregates[counter].qty += qty;
+            counterAggregates[counter].gross += gross;
+            counterAggregates[counter].value += val;
+            counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
+
+            counterAggregates["ALL"].qty += qty;
+            counterAggregates["ALL"].gross += gross;
+            counterAggregates["ALL"].value += val;
+
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : categoryDisplayKey;
+            counterAggregates["ALL"].categories[allCatKey] = (counterAggregates["ALL"].categories[allCatKey] || 0) + qty;
+          });
+
+          if (!counterAggregates["COIN"]) {
+            counterAggregates["COIN"] = { qty: 0, gross: 0, value: 0, categories: {} };
+          }
+          counterAggregates["COIN"].coinBreakdown = coinData;
+
+          let dayRecord = await getDayRecord(fileDate);
+          const isMorning = fileTime.toLowerCase().includes("am") || !dayRecord;
+
+          if (isMorning || !dayRecord || !dayRecord.opening) {
+            dayRecord = {
+              date: fileDate,
+              opening: { time: fileTime, fileName: file.name, counters: counterAggregates },
+              closing: dayRecord ? dayRecord.closing : null,
+              isTemporaryClosing: dayRecord ? dayRecord.isTemporaryClosing : false
+            };
+          } else {
+            dayRecord.closing = { time: fileTime, fileName: file.name, counters: counterAggregates };
+            dayRecord.isTemporaryClosing = true;
+          }
+
+          await saveDayRecord(dayRecord);
+          await refreshDayList();
+          document.getElementById("dateSelect").value = fileDate;
+          renderDashboard();
+          document.getElementById("liveStatus").textContent = `Loaded ${fileDate}`;
+          document.getElementById("liveStatus").className = "text-[10px] text-emerald-600 font-bold";
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing live stock file.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseReportWithHeaderAtRow2(workbook) {
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      if (rawRows.length < 2) return [];
+      const headers = rawRows[1].map(h => String(h || "").trim());
+      const dataRows = [];
+      for (let r = 2; r < rawRows.length; r++) {
+        const rowObj = {};
+        headers.forEach((h, idx) => {
+          if (h) rowObj[h] = rawRows[r][idx];
+        });
+        dataRows.push(rowObj);
+      }
+      return dataRows;
+    }
+
+    function extractMonthKey(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.split("-");
+      if (parts.length === 3) return `${parts[2]}-${parts[1]}`;
+      return null;
+    }
+
+    // --- Parse 2: Stock Receipt (STM) ---
+    async function processReceiptFile(file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const rows = parseReportWithHeaderAtRow2(wb);
+          if (rows.length === 0) return alert("Receipt report is empty.");
+
+          let detectedMonth = null;
+          const receiptsByDate = {};
+
+          rows.forEach(r => {
+            const status = String(r["STNStatus"] || "").trim().toUpperCase();
+            if (status !== "RECEIVED") return;
+
+            const binCode = String(r["BinCode"] || "").trim().toUpperCase();
+            const dateStr = normalizeDate(r["Doc Date"]);
+            if (!dateStr) return;
+            if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
+
+            const origGroup = String(r["CFA Description"] || "").trim();
+            const origCat = String(r["ProductCategory"] || "").trim();
+            const itemCode = String(r["ItemCode"] || "").trim();
+            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
+            const qty = Number(r["ReceivedQty"] || 0);
+
+            let catKey = finalCat;
+            if (counter === "BANGLE") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
+
+            if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
+            if (!receiptsByDate[dateStr][counter]) receiptsByDate[dateStr][counter] = { qty: 0, categories: {} };
+            if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+
+            receiptsByDate[dateStr][counter].qty += qty;
+            receiptsByDate[dateStr][counter].categories[catKey] = (receiptsByDate[dateStr][counter].categories[catKey] || 0) + qty;
+
+            receiptsByDate[dateStr]["ALL"].qty += qty;
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+            receiptsByDate[dateStr]["ALL"].categories[allCatKey] = (receiptsByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
+          });
+
+          await updateMonthlyData(detectedMonth || currentActiveMonth, "receipts", receiptsByDate, file.name);
+          renderDashboard();
+          alert(`Updated Stock Receipts for ${detectedMonth}!`);
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing Stock Receipt report.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // --- Parse 2B: Dedicated GEP / TEP Receipt Reports ---
+    async function processGepOrTepReceiptFile(file, counterKey) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const rows = parseReportWithHeaderAtRow2(wb);
+          
+          let detectedMonth = null;
+          const receiptsByDate = {};
+
+          rows.forEach(r => {
+            const status = String(r["Status"] || "").trim().toUpperCase();
+            if (status && status !== "CONFIRMED" && status !== "ACTIVE") return;
+
+            const dateStr = normalizeDate(r["DATE"] || r["Doc Date"]);
+            if (!dateStr) return;
+            if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
+
+            const qty = Number(r["QUANTITY"] || r["Quantity"] || 1);
+
+            if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
+            if (!receiptsByDate[dateStr][counterKey]) receiptsByDate[dateStr][counterKey] = { qty: 0, categories: {} };
+            if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+
+            receiptsByDate[dateStr][counterKey].qty += qty;
+            receiptsByDate[dateStr][counterKey].categories[counterKey] = (receiptsByDate[dateStr][counterKey].categories[counterKey] || 0) + qty;
+
+            receiptsByDate[dateStr]["ALL"].qty += qty;
+            receiptsByDate[dateStr]["ALL"].categories[counterKey] = (receiptsByDate[dateStr]["ALL"].categories[counterKey] || 0) + qty;
+          });
+
+          const subField = counterKey === "GEP" ? "gep_receipts" : "tep_receipts";
+          await updateMonthlyData(detectedMonth || currentActiveMonth, subField, receiptsByDate, file.name);
+          renderDashboard();
+          alert(`Updated ${counterKey} Receipts for ${detectedMonth || currentActiveMonth}! (${Object.keys(receiptsByDate).length} active dates)`);
+        } catch (err) {
+          console.error(err);
+          alert(`Error parsing ${counterKey} Receipt report.`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // --- Parse 3: Stock Issue ---
+    async function processIssueFile(file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const rows = parseReportWithHeaderAtRow2(wb);
+          if (rows.length === 0) return alert("Issue report is empty.");
+
+          let detectedMonth = null;
+          const issuesByDate = {};
+
+          rows.forEach(r => {
+            const binCode = String(r["Bin Code"] || "").trim().toUpperCase();
+            const dateStr = normalizeDate(r["STN Request Date"]);
+            if (!dateStr) return;
+            if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
+
+            const origGroup = String(r["CFA Description"] || "").trim();
+            const origCat = String(r["Product Category Description"] || "").trim();
+            const itemCode = String(r["Variant Code"] || "").trim();
+            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
+            const qty = Number(r["Qty"] || 0);
+
+            let catKey = finalCat;
+            if (counter === "BANGLE") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
+
+            if (!issuesByDate[dateStr]) issuesByDate[dateStr] = {};
+            if (!issuesByDate[dateStr][counter]) issuesByDate[dateStr][counter] = { qty: 0, categories: {} };
+            if (!issuesByDate[dateStr]["ALL"]) issuesByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+
+            issuesByDate[dateStr][counter].qty += qty;
+            issuesByDate[dateStr][counter].categories[catKey] = (issuesByDate[dateStr][counter].categories[catKey] || 0) + qty;
+
+            issuesByDate[dateStr]["ALL"].qty += qty;
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+            issuesByDate[dateStr]["ALL"].categories[allCatKey] = (issuesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
+          });
+
+          await updateMonthlyData(detectedMonth || currentActiveMonth, "issues", issuesByDate, file.name);
+          renderDashboard();
+          alert(`Updated Stock Issues for ${detectedMonth}!`);
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing Stock Issue report.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // --- Parse 4: Sales Report POS ---
+    async function processSalesFile(file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const rows = parseReportWithHeaderAtRow2(wb);
+          if (rows.length === 0) return alert("Sales report is empty.");
+
+          let detectedMonth = null;
+          const salesByDate = {};
+          const grnByDate = {};
+
+          rows.forEach(r => {
+            const loc = String(r["Location Code"] || "").trim().toUpperCase();
+            if (loc && loc !== "MAI") return;
+
+            const dateStr = normalizeDate(r["Doc Date"]);
+            if (!dateStr) return;
+            if (!detectedMonth) detectedMonth = extractMonthKey(dateStr);
+
+            const origGroup = String(r["CFA Product Code Description"] || "").trim();
+            const origCat = String(r["Product Category Description"] || "").trim();
+            const binCode = String(r["Bin Code"] || "").trim().toUpperCase();
+            const itemCode = String(r["Item Code"] || "").trim();
+            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
+
+            const qty = Number(r["Quantity"] || 0);
+
+            let catKey = finalCat;
+            if (counter === "BANGLE") {
+              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
+              if (setChar === "1") catKey = "Set 1 (Single)";
+              else if (setChar === "2") catKey = "Set 2 (Pair)";
+              else if (setChar === "4") catKey = "Set 4 (Set of 4)";
+              else if (setChar) catKey = `Set ${setChar}`;
+            }
+
+            if (qty > 0) {
+              if (!salesByDate[dateStr]) salesByDate[dateStr] = {};
+              if (!salesByDate[dateStr][counter]) salesByDate[dateStr][counter] = { qty: 0, categories: {} };
+              if (!salesByDate[dateStr]["ALL"]) salesByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+
+              salesByDate[dateStr][counter].qty += qty;
+              salesByDate[dateStr][counter].categories[catKey] = (salesByDate[dateStr][counter].categories[catKey] || 0) + qty;
+              salesByDate[dateStr]["ALL"].qty += qty;
+              const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+              salesByDate[dateStr]["ALL"].categories[allCatKey] = (salesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
+            } else if (qty < 0) {
+              const grnQty = Math.abs(qty);
+              if (!grnByDate[dateStr]) grnByDate[dateStr] = {};
+              if (!grnByDate[dateStr][counter]) grnByDate[dateStr][counter] = { qty: 0, categories: {} };
+              if (!grnByDate[dateStr]["ALL"]) grnByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+
+              grnByDate[dateStr][counter].qty += grnQty;
+              grnByDate[dateStr][counter].categories[catKey] = (grnByDate[dateStr][counter].categories[catKey] || 0) + grnQty;
+              grnByDate[dateStr]["ALL"].qty += grnQty;
+              const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
+              grnByDate[dateStr]["ALL"].categories[allCatKey] = (grnByDate[dateStr]["ALL"].categories[allCatKey] || 0) + grnQty;
+            }
+          });
+
+          const mKey = detectedMonth || currentActiveMonth;
+          let mRec = await getMonthRecord(mKey);
+          if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, grn: {}, files: {} };
+
+          if (mRec.isArchived) {
+            return alert(`Month ${mKey} is archived. Unlock it from Manage Uploads first.`);
+          }
+
+          if (!mRec.files) mRec.files = {};
+          mRec.files.sales = file.name;
+          mRec.sales = salesByDate;
+          mRec.grn = grnByDate;
+          await saveMonthRecord(mRec);
+
+          currentActiveMonth = mKey;
+          currentMonthData = mRec;
+          await refreshMonthDropdown();
+          renderDashboard();
+          alert(`Updated Sales & GRN for ${detectedMonth}!`);
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing Sales report.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function updateMonthlyData(mKey, fieldName, dataByDate, fileName) {
+      let mRec = await getMonthRecord(mKey);
+      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, grn: {}, files: {} };
+
+      if (mRec.isArchived) {
+        throw new Error(`Month ${mKey} is locked and archived.`);
+      }
+
+      if (!mRec.files) mRec.files = {};
+      mRec.files[fieldName] = fileName;
+      mRec[fieldName] = dataByDate;
+      await saveMonthRecord(mRec);
+
+      currentActiveMonth = mKey;
+      currentMonthData = mRec;
+      await refreshMonthDropdown();
+    }
+
+    function updateUploadCardsStatus() {
+      const mRec = currentMonthData || {};
+      const hasRec = mRec.receipts && Object.keys(mRec.receipts).length > 0;
+      const hasGepRec = mRec.gep_receipts && Object.keys(mRec.gep_receipts).length > 0;
+      const hasTepRec = mRec.tep_receipts && Object.keys(mRec.tep_receipts).length > 0;
+      const hasIss = mRec.issues && Object.keys(mRec.issues).length > 0;
+      const hasSale = mRec.sales && Object.keys(mRec.sales).length > 0;
+
+      const recEl = document.getElementById("receiptStatus");
+      recEl.textContent = hasRec ? `Active (${mRec.month})` : "Not Uploaded";
+      recEl.className = hasRec ? "text-[10px] text-blue-600 font-bold" : "text-[10px] text-slate-400";
+
+      const gepRecEl = document.getElementById("gepReceiptStatus");
+      gepRecEl.textContent = hasGepRec ? `Active (${mRec.month})` : "Not Uploaded";
+      gepRecEl.className = hasGepRec ? "text-[10px] text-amber-600 font-bold" : "text-[10px] text-slate-400";
+
+      const tepRecEl = document.getElementById("tepReceiptStatus");
+      tepRecEl.textContent = hasTepRec ? `Active (${mRec.month})` : "Not Uploaded";
+      tepRecEl.className = hasTepRec ? "text-[10px] text-indigo-600 font-bold" : "text-[10px] text-slate-400";
+
+      const issEl = document.getElementById("issueStatus");
+      issEl.textContent = hasIss ? `Active (${mRec.month})` : "Not Uploaded";
+      issEl.className = hasIss ? "text-[10px] text-purple-600 font-bold" : "text-[10px] text-slate-400";
+
+      const saleEl = document.getElementById("salesStatus");
+      saleEl.textContent = hasSale ? `Active (${mRec.month})` : "Not Uploaded";
+      saleEl.className = hasSale ? "text-[10px] text-emerald-600 font-bold" : "text-[10px] text-slate-400";
+    }
+
+    async function refreshMonthDropdown() {
+      const records = await getAllMonthRecords();
+      const select = document.getElementById("monthSelect");
+      select.innerHTML = "";
+
+      if (records.length === 0) {
+        select.innerHTML = `<option value="2026-10">2026-10 (Active)</option>`;
+        currentActiveMonth = "2026-10";
+      } else {
+        records.sort((a,b) => b.month.localeCompare(a.month));
+        records.forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r.month;
+          opt.textContent = `${r.month} ${r.isArchived ? '(Archived)' : '(Active)'}`;
+          select.appendChild(opt);
+        });
+        if (records.some(r => r.month === currentActiveMonth)) {
+          select.value = currentActiveMonth;
+        } else {
+          select.value = records[0].month;
+          currentActiveMonth = records[0].month;
+        }
+      }
+
+      currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
+        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, grn: {}
+      };
+
+      const btn = document.getElementById("btnArchiveMonth");
+      btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
+
+      updateUploadCardsStatus();
+    }
+
+    function parseDateStr(str) {
+      const parts = str.split("-").map(Number);
+      return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+
+    async function refreshDayList() {
+      allDayRecords = await getAllDayRecords();
+      allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
+
+      const select = document.getElementById("dateSelect");
+      const currentSelected = select.value;
+      select.innerHTML = "";
+
+      if (allDayRecords.length === 0) {
+        select.innerHTML = `<option value="">No snapshots uploaded</option>`;
+      } else {
+        allDayRecords.forEach(rec => {
+          const opt = document.createElement("option");
+          opt.value = rec.date;
+          opt.textContent = rec.date;
+          select.appendChild(opt);
+        });
+        if (currentSelected && allDayRecords.some(r => r.date === currentSelected)) {
+          select.value = currentSelected;
+        } else {
+          select.value = allDayRecords[allDayRecords.length - 1].date;
+        }
+      }
+
+      renderDashboard();
+    }
+
+    function getResolvedDayStock(selectedDate) {
+      const idx = allDayRecords.findIndex(d => d.date === selectedDate);
+      if (idx === -1) return null;
+
+      const currentDay = allDayRecords[idx];
+      const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
+
+      let closingData = null;
+      let closingType = "none";
+      let closingTimeLabel = "";
+
+      if (nextDay && nextDay.opening) {
+        closingData = nextDay.opening.counters;
+        closingType = "finalized";
+        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
+      } else if (currentDay.closing) {
+        closingData = currentDay.closing.counters;
+        closingType = "temporary";
+        closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
+      }
+
+      return {
+        date: currentDay.date,
+        opening: currentDay.opening,
+        closingCounters: closingData,
+        closingType: closingType,
+        closingTimeLabel: closingTimeLabel
+      };
+    }
+
+    // --- Consolidated Transaction Fetcher (STM + GEP + TEP Receipts) ---
+    function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
+      const res = { qty: 0, categories: {} };
+      if (!mRec) return res;
+
+      // 1. STM Receipts
+      const stm = (mRec.receipts && mRec.receipts[selectedDate] && mRec.receipts[selectedDate][selectedCounter]) ? mRec.receipts[selectedDate][selectedCounter] : null;
+      if (stm) {
+        res.qty += Number(stm.qty) || 0;
+        Object.keys(stm.categories || {}).forEach(k => {
+          res.categories[k] = (res.categories[k] || 0) + (Number(stm.categories[k]) || 0);
+        });
+      }
+
+      // 2. GEP Receipts
+      const gep = (mRec.gep_receipts && mRec.gep_receipts[selectedDate] && mRec.gep_receipts[selectedDate][selectedCounter]) ? mRec.gep_receipts[selectedDate][selectedCounter] : null;
+      if (gep) {
+        res.qty += Number(gep.qty) || 0;
+        Object.keys(gep.categories || {}).forEach(k => {
+          res.categories[k] = (res.categories[k] || 0) + (Number(gep.categories[k]) || 0);
+        });
+      }
+
+      // 3. TEP Receipts
+      const tep = (mRec.tep_receipts && mRec.tep_receipts[selectedDate] && mRec.tep_receipts[selectedDate][selectedCounter]) ? mRec.tep_receipts[selectedDate][selectedCounter] : null;
+      if (tep) {
+        res.qty += Number(tep.qty) || 0;
+        Object.keys(tep.categories || {}).forEach(k => {
+          res.categories[k] = (res.categories[k] || 0) + (Number(tep.categories[k]) || 0);
+        });
+      }
+
+      return res;
+    }
+
+    // --- Dashboard Renderer ---
+    function renderDashboard() {
+      const selectedDate = document.getElementById("dateSelect").value;
+      if (!selectedDate || allDayRecords.length === 0) {
+        resetDashboard();
+        return;
+      }
+
+      const resolved = getResolvedDayStock(selectedDate);
+      if (!resolved) {
+        resetDashboard();
+        return;
+      }
+
+      const hasOpening = !!resolved.opening;
+      const hasClosing = resolved.closingType !== "none";
+
+      document.getElementById("openingDateSub").textContent = hasOpening ? `${resolved.opening.time || 'Morning Dump'}` : "Not Recorded";
+
+      const badge = document.getElementById("closingStatusBadge");
+      const closingAccent = document.getElementById("closingAccent");
+      const closingTitle = document.getElementById("closingTitle");
+
+      if (hasClosing) {
+        badge.classList.remove("hidden");
+        if (resolved.closingType === "temporary") {
+          badge.textContent = "Temporary";
+          badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-100 text-amber-800";
+          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
+          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
+          document.getElementById("closingDateSub").textContent = resolved.closingTimeLabel;
+        } else {
+          badge.textContent = "Finalized";
+          badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800";
+          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
+          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
+          document.getElementById("closingDateSub").textContent = resolved.closingTimeLabel;
+        }
+      } else {
+        badge.classList.add("hidden");
+        closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
+        closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
+        document.getElementById("closingDateSub").textContent = "Pending (Upload midday or tomorrow morning)";
+      }
+
+      const showGross = document.getElementById("chkGrossWeight").checked;
+      const showVal = document.getElementById("chkPreTax").checked;
+
+      document.getElementById("openExtra").classList.toggle("hidden", !showGross && !showVal);
+      document.getElementById("closeExtra").classList.toggle("hidden", !showGross && !showVal);
+
+      const openData = (hasOpening && resolved.opening.counters && resolved.opening.counters[selectedCounter]) 
+        ? resolved.opening.counters[selectedCounter] : { qty: 0, gross: 0, value: 0, categories: {} };
+
+      const closeData = (hasClosing && resolved.closingCounters && resolved.closingCounters[selectedCounter]) 
+        ? resolved.closingCounters[selectedCounter] : null;
+
+      const mRec = currentMonthData || {};
+      
+      // Consolidated Receipts: STM + GEP + TEP
+      const recDate = getConsolidatedReceipts(mRec, selectedDate, selectedCounter);
+      const grnDate = (mRec.grn && mRec.grn[selectedDate] && mRec.grn[selectedDate][selectedCounter]) ? mRec.grn[selectedDate][selectedCounter] : { qty: 0, categories: {} };
+      const issDate = (mRec.issues && mRec.issues[selectedDate] && mRec.issues[selectedDate][selectedCounter]) ? mRec.issues[selectedDate][selectedCounter] : { qty: 0, categories: {} };
+      const saleDate = (mRec.sales && mRec.sales[selectedDate] && mRec.sales[selectedDate][selectedCounter]) ? mRec.sales[selectedDate][selectedCounter] : { qty: 0, categories: {} };
+
+      const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
+
+      // Card 1: Opening
+      document.getElementById("openQty").textContent = hasOpening ? openData.qty.toLocaleString() : "—";
+      document.getElementById("openGross").textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
+      document.getElementById("openVal").textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
+
+      // Card 2: Transactions
+      document.getElementById("transQty").textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
+      document.getElementById("transQty").className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
+      document.getElementById("txRec").textContent = `+${recDate.qty || 0}`;
+      document.getElementById("txGrn").textContent = `+${grnDate.qty || 0}`;
+      document.getElementById("txIss").textContent = `-${issDate.qty || 0}`;
+      document.getElementById("txSold").textContent = `-${saleDate.qty || 0}`;
+
+      // Card 3: Closing
+      const closeQtyUnit = document.getElementById("closeQtyUnit");
+      if (hasClosing && closeData) {
+        closeQtyUnit.classList.remove("hidden");
+        document.getElementById("closeQty").textContent = closeData.qty.toLocaleString();
+        document.getElementById("closeGross").textContent = `${closeData.gross.toFixed(3)} g`;
+        document.getElementById("closeVal").textContent = `₹${Math.round(closeData.value).toLocaleString()}`;
+      } else {
+        closeQtyUnit.classList.add("hidden");
+        document.getElementById("closeQty").textContent = "—";
+        document.getElementById("closeGross").textContent = "—";
+        document.getElementById("closeVal").textContent = "—";
+      }
+
+      // Card 4: Difference
+      const diffAccent = document.getElementById("diffAccent");
+      const diffTitle = document.getElementById("diffTitle");
+      const diffQtyEl = document.getElementById("diffQty");
+      const diffStatusText = document.getElementById("diffStatusText");
+
+      if (hasClosing && closeData) {
+        const systemClosing = openData.qty + netTransactions;
+        const diffQty = closeData.qty - systemClosing;
+
+        diffQtyEl.textContent = diffQty > 0 ? `+${diffQty}` : `${diffQty}`;
+        if (diffQty === 0) {
+          diffQtyEl.className = "text-3xl font-extrabold text-emerald-600";
+          diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
+          diffTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
+          diffStatusText.textContent = "Exact Balance (No Variance)";
+          diffStatusText.className = "text-xs font-semibold text-emerald-600 mt-1";
+        } else {
+          diffQtyEl.className = "text-3xl font-extrabold text-rose-600";
+          diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-rose-500";
+          diffTitle.className = "text-xs font-bold uppercase tracking-wider text-rose-600";
+          diffStatusText.textContent = diffQty > 0 ? `Excess Physical Stock (+${diffQty} pcs)` : `Shortage in Stock (${diffQty} pcs)`;
+          diffStatusText.className = "text-xs font-semibold text-rose-600 mt-1";
+        }
+      } else {
+        diffQtyEl.textContent = "—";
+        diffQtyEl.className = "text-3xl font-extrabold text-slate-800";
+        diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
+        diffTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
+        diffStatusText.textContent = "Awaiting Closing Snapshot";
+        diffStatusText.className = "text-xs font-medium text-slate-400 mt-1";
+      }
+
+      // Detail Section
+      const container = document.getElementById("detailSectionContainer");
+      if (selectedCounter === "COIN") {
+        renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
+      } else {
+        renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate);
+      }
+    }
+
+    function renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
+      const openCategories = openData.categories || {};
+      const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
+      const recCategories = recDate.categories || {};
+      const grnCategories = grnDate.categories || {};
+      const issCategories = issDate.categories || {};
+      const saleCategories = saleDate.categories || {};
+
+      const allCatKeys = Array.from(new Set([
+        ...Object.keys(openCategories),
+        ...Object.keys(closeCategories),
+        ...Object.keys(recCategories),
+        ...Object.keys(grnCategories),
+        ...Object.keys(issCategories),
+        ...Object.keys(saleCategories)
+      ])).sort();
+
+      const sectionTitle = selectedCounter === "BANGLE" 
+        ? "Bangles Reconciliation by Set (Opening + Received + GRN - Issue - Sold = Closing)" 
+        : (selectedCounter === "GEP" || selectedCounter === "TEP")
+          ? `${selectedCounter} Reconciliation (Opening + Received + GRN - Issue - Sold = Closing)`
+          : "Counter Category Reconciliation Table";
+
+      let rowsHtml = "";
+      if (allCatKeys.length === 0) {
+        rowsHtml = `<tr><td colspan="9" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
+      } else {
+        allCatKeys.forEach(cat => {
+          const oQ = getSafeQty(openCategories[cat]);
+          const rQ = getSafeQty(recCategories[cat]);
+          const gQ = getSafeQty(grnCategories[cat]);
+          const iQ = getSafeQty(issCategories[cat]);
+          const sQ = getSafeQty(saleCategories[cat]);
+
+          const systemClosing = oQ + rQ + gQ - iQ - sQ;
+          const hasCloseCat = closeData && closeCategories[cat] !== undefined;
+          const cQ = hasCloseCat ? getSafeQty(closeCategories[cat]) : null;
+
+          let diffDisplay = "—";
+          let diffClass = "text-slate-400";
+          if (cQ !== null) {
+            const diff = cQ - systemClosing;
+            diffDisplay = diff > 0 ? `+${diff}` : `${diff}`;
+            diffClass = diff === 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-extrabold";
+          }
+
+          rowsHtml += `
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="px-4 py-2.5 font-medium text-slate-800">${cat}</td>
+              <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-blue-600">${rQ > 0 ? `+${rQ}` : 0}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-emerald-600">${gQ > 0 ? `+${gQ}` : 0}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-purple-600">${iQ > 0 ? `-${iQ}` : 0}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-rose-600">${sQ > 0 ? `-${sQ}` : 0}</td>
+              <td class="px-3 py-2.5 text-right font-semibold text-slate-700">${hasOpening ? systemClosing : "—"}</td>
+              <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
+              <td class="px-4 py-2.5 text-right ${diffClass}">${diffDisplay}</td>
+            </tr>
+          `;
+        });
+      }
+
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-800">${sectionTitle}</h2>
+            <button onclick="copyCurrentReconciliation('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
+              📋 Copy for Stock Book
+            </button>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-xs" id="reconcileTable">
+              <thead class="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3">${selectedCounter === "BANGLE" ? "Bangle Set" : (selectedCounter === "GEP" || selectedCounter === "TEP" ? "Counter Group" : "Category")}</th>
+                  <th class="px-3 py-3 text-right">Opening</th>
+                  <th class="px-3 py-3 text-right text-blue-700">+Rec</th>
+                  <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
+                  <th class="px-3 py-3 text-right text-purple-700">-Iss</th>
+                  <th class="px-3 py-3 text-right text-rose-700">-Sold</th>
+                  <th class="px-3 py-3 text-right">System Cl.</th>
+                  <th class="px-3 py-3 text-right">Physical Cl.</th>
+                  <th class="px-4 py-3 text-right">Difference</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
+      const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
+      const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
+
+      function buildCoinRows(metalKey) {
+        const oDict = openCoins[metalKey] || {};
+        const cDict = (hasClosing && closeData) ? (closeCoins[metalKey] || {}) : null;
+
+        const allWeights = Array.from(new Set([
+          ...Object.keys(oDict),
+          ...(cDict ? Object.keys(cDict) : [])
+        ])).map(Number).sort((a,b) => a - b);
+
+        if (allWeights.length === 0) {
+          return `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400 text-xs">No coins recorded</td></tr>`;
+        }
+
+        let html = "";
+        let totalOpen = 0;
+        let totalClose = 0;
+
+        allWeights.forEach(wt => {
+          const oQ = Number(oDict[wt]) || 0;
+          const cQ = cDict ? (Number(cDict[wt]) || 0) : null;
+          totalOpen += oQ;
+          if (cQ !== null) totalClose += cQ;
+
+          const diff = cQ !== null ? (cQ - oQ) : null;
+
+          html += `
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-2 font-bold text-slate-800">${wt} g</td>
+              <td class="px-4 py-2 text-right font-medium text-slate-700">${hasOpening ? oQ : "—"}</td>
+              <td class="px-4 py-2 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
+              <td class="px-4 py-2 text-right font-semibold ${cQ !== null ? (diff === 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}">
+                ${cQ !== null ? (diff > 0 ? `+${diff}` : `${diff}`) : "—"}
+              </td>
+            </tr>
+          `;
+        });
+
+        const totalDiff = totalClose - totalOpen;
+        html += `
+          <tr class="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
+            <td class="px-4 py-2">Total Coins</td>
+            <td class="px-4 py-2 text-right">${hasOpening ? totalOpen : "—"}</td>
+            <td class="px-4 py-2 text-right">${hasClosing && closeData ? totalClose : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
+            <td class="px-4 py-2 text-right ${hasClosing && closeData ? (totalDiff === 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}">
+              ${hasClosing && closeData ? (totalDiff > 0 ? `+${totalDiff}` : totalDiff) : "—"}
+            </td>
+          </tr>
+        `;
+        return html;
+      }
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown (Pcs by Gram Weight)</h2>
+            <button onclick="copyCurrentReconciliation('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
+              📋 Copy for Stock Book
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-amber-500 text-white font-bold text-xs uppercase tracking-wider">
+                🟡 Gold Coins (24K)
+              </div>
+              <table class="w-full text-left text-xs" id="goldCoinsTable">
+                <thead class="bg-amber-50 text-amber-900 font-semibold border-b border-amber-200">
+                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">${buildCoinRows("gold")}</tbody>
+              </table>
+            </div>
+            <div class="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xs">
+              <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase tracking-wider">
+                ⚪ Silver Coins
+              </div>
+              <table class="w-full text-left text-xs" id="silverCoinsTable">
+                <thead class="bg-slate-100 text-slate-800 font-semibold border-b border-slate-200">
+                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">${buildCoinRows("silver")}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function resetDashboard() {
+      document.getElementById("closeQty").textContent = "0";
+      document.getElementById("openQty").textContent = "0";
+      document.getElementById("transQty").textContent = "0";
+      document.getElementById("diffQty").textContent = "0";
+      document.getElementById("closingDateSub").textContent = "—";
+      document.getElementById("openingDateSub").textContent = "—";
+      document.getElementById("detailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a file to begin</div>`;
+    }
+
+    // --- Manage Uploads: Render Tabs & Lists ---
+    function renderManageList() {
+      renderManageDaysList();
+      renderManageMonthsList();
+    }
+
+    function renderManageDaysList() {
+      const container = document.getElementById("manageListContainerDays");
+      container.innerHTML = "";
+
+      if (!allDayRecords || allDayRecords.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No live stock snapshots uploaded yet.</div>`;
+        return;
+      }
+
+      const reversedRecords = [...allDayRecords].reverse();
+
+      reversedRecords.forEach(day => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
+        const resolved = getResolvedDayStock(day.date);
+        const hasOpening = !!day.opening;
+        const hasClosing = resolved && resolved.closingType !== "none";
+
+        const openTime = (day.opening && day.opening.time) ? day.opening.time : 'Morning Dump';
+        const openFile = (day.opening && day.opening.fileName) ? `(${day.opening.fileName})` : '';
+
+        item.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${day.date}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                hasClosing ? (resolved.closingType === 'temporary' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') : 'bg-blue-100 text-blue-800'
+              }">
+                ${hasClosing ? (resolved.closingType === 'temporary' ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
+              </span>
+            </div>
+            <div class="text-xs text-slate-500 space-y-0.5">
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
+              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : 'Pending'}</span></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end md:self-center">
+            ${day.closing ? `
+              <button onclick="handleClearClosing('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors cursor-pointer">
+                Clear Closing
+              </button>
+            ` : ''}
+            <button onclick="handleDeleteDay('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors cursor-pointer">
+              Delete Day
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function renderManageMonthsList() {
+      const container = document.getElementById("manageListContainerMonths");
+      container.innerHTML = "";
+
+      const records = await getAllMonthRecords();
+      if (!records || records.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No monthly transaction reports uploaded yet.</div>`;
+        return;
+      }
+
+      records.sort((a,b) => b.month.localeCompare(a.month));
+
+      records.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 shadow-xs";
+
+        const hasRec = m.receipts && Object.keys(m.receipts).length > 0;
+        const hasGepRec = m.gep_receipts && Object.keys(m.gep_receipts).length > 0;
+        const hasTepRec = m.tep_receipts && Object.keys(m.tep_receipts).length > 0;
+        const hasIss = m.issues && Object.keys(m.issues).length > 0;
+        const hasSale = m.sales && Object.keys(m.sales).length > 0;
+
+        const recFileName = (m.files && m.files.receipts) ? m.files.receipts : "Stock Receipt Report";
+        const gepRecFileName = (m.files && m.files.gep_receipts) ? m.files.gep_receipts : "GEP Receipt Report";
+        const tepRecFileName = (m.files && m.files.tep_receipts) ? m.files.tep_receipts : "TEP Receipt Report";
+        const issFileName = (m.files && m.files.issues) ? m.files.issues : "Stock Issue Report";
+        const saleFileName = (m.files && m.files.sales) ? m.files.sales : "Sales Report POS";
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${m.month}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${m.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">
+                ${m.isArchived ? 'Archived (Locked)' : 'Active Month'}
+              </span>
+            </div>
+            <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 transition-colors cursor-pointer">
+              Delete Month
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+            <!-- Receipt STM -->
+            <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-blue-900 flex items-center gap-1">📥 Receipts (STM)</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${recFileName}">${hasRec ? recFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasRec ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- GEP Receipt -->
+            <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1">🪙 GEP Receipt</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${gepRecFileName}">${hasGepRec ? gepRecFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasGepRec ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- TEP Receipt -->
+            <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-indigo-900 flex items-center gap-1">📦 TEP Receipt</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${tepRecFileName}">${hasTepRec ? tepRecFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasTepRec ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- Issue -->
+            <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-purple-900 flex items-center gap-1">📤 Issues</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${issFileName}">${hasIss ? issFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasIss ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+
+            <!-- Sales -->
+            <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+              <div>
+                <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1">🏷 Sales & GRN</span>
+                <p class="text-[10px] text-slate-500 mt-1 truncate" title="${saleFileName}">${hasSale ? saleFileName : 'Not uploaded'}</p>
+              </div>
+              <div class="mt-2 text-right">
+                ${hasSale ? `
+                  <button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" type="button" class="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    Delete
+                  </button>
+                ` : '<span class="text-[10px] text-slate-400">—</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // --- Deletion Handlers ---
+    window.handleClearClosing = async function(dateStr) {
+      if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
+      const rec = await getDayRecord(dateStr);
+      if (rec) {
+        rec.closing = null;
+        rec.isTemporaryClosing = false;
+        await saveDayRecord(rec);
+        await refreshDayList();
+        renderManageList();
+      }
+    };
+
+    window.handleDeleteDay = async function(dateStr) {
+      if (!confirm(`Delete live stock snapshot for ${dateStr}?`)) return;
+      await deleteDayRecord(dateStr);
+      await refreshDayList();
+      renderManageList();
+    };
+
+    window.handleDeleteMonthSubReport = async function(monthStr, subKey) {
+      if (!confirm(`Are you sure you want to delete the ${subKey.toUpperCase()} data for ${monthStr}? You can upload that report again immediately.`)) return;
+      const mRec = await getMonthRecord(monthStr);
+      if (mRec) {
+        if (subKey === "sales") {
+          mRec.sales = {};
+          mRec.grn = {};
+          if (mRec.files) delete mRec.files.sales;
+        } else {
+          mRec[subKey] = {};
+          if (mRec.files) delete mRec.files[subKey];
+        }
+        await saveMonthRecord(mRec);
+        await refreshMonthDropdown();
+        renderManageList();
+        renderDashboard();
+      }
+    };
+
+    window.handleDeleteEntireMonth = async function(monthStr) {
+      if (!confirm(`Delete all transaction reports for ${monthStr}?`)) return;
+      await deleteMonthRecord(monthStr);
+      await refreshMonthDropdown();
+      renderManageList();
+      renderDashboard();
+    };
+
+    window.copyCurrentReconciliation = function(date) {
+      let text = `Date: ${date} | Counter: ${selectedCounter}\n`;
+      const table = document.getElementById("reconcileTable");
+      if (table) {
+        Array.from(table.querySelectorAll("tr")).forEach(r => {
+          text += Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim()).join("\t") + "\n";
+        });
+      }
+      navigator.clipboard.writeText(text).then(() => alert("Copied reconciliation to clipboard!"));
+    };
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+      const tabBtnDays = document.getElementById("tabBtnDays");
+      const tabBtnMonths = document.getElementById("tabBtnMonths");
+      const containerDays = document.getElementById("manageListContainerDays");
+      const containerMonths = document.getElementById("manageListContainerMonths");
+
+      tabBtnDays.addEventListener("click", () => {
+        tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+        containerDays.classList.remove("hidden");
+        containerMonths.classList.add("hidden");
+      });
+
+      tabBtnMonths.addEventListener("click", () => {
+        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+        tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+        containerMonths.classList.remove("hidden");
+        containerDays.classList.add("hidden");
+        renderManageMonthsList();
+      });
+
+      // 1. Live Stock Drop
+      const fileLive = document.getElementById("fileLive");
+      const dropLive = document.getElementById("dropAreaLive");
+      fileLive.addEventListener("change", (e) => { if (e.target.files.length > 0) processLiveStockFile(e.target.files[0]); });
+      dropLive.addEventListener("dragover", (e) => { e.preventDefault(); dropLive.classList.add("border-amber-500", "bg-amber-100/50"); });
+      dropLive.addEventListener("dragleave", () => { dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); });
+      dropLive.addEventListener("drop", (e) => { e.preventDefault(); dropLive.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) processLiveStockFile(e.dataTransfer.files[0]); });
+
+      // 2. Receipt STM Drop
+      const fileReceipt = document.getElementById("fileReceipt");
+      const dropReceipt = document.getElementById("dropAreaReceipt");
+      fileReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processReceiptFile(e.target.files[0]); });
+      dropReceipt.addEventListener("dragover", (e) => { e.preventDefault(); dropReceipt.classList.add("border-blue-500", "bg-blue-50"); });
+      dropReceipt.addEventListener("dragleave", () => { dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); });
+      dropReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropReceipt.classList.remove("border-blue-500", "bg-blue-50"); if (e.dataTransfer.files.length > 0) processReceiptFile(e.dataTransfer.files[0]); });
+
+      // 3. Issue Drop
+      const fileIssue = document.getElementById("fileIssue");
+      const dropIssue = document.getElementById("dropAreaIssue");
+      fileIssue.addEventListener("change", (e) => { if (e.target.files.length > 0) processIssueFile(e.target.files[0]); });
+      dropIssue.addEventListener("dragover", (e) => { e.preventDefault(); dropIssue.classList.add("border-purple-500", "bg-purple-50"); });
+      dropIssue.addEventListener("dragleave", () => { dropIssue.classList.remove("border-purple-500", "bg-purple-50"); });
+      dropIssue.addEventListener("drop", (e) => { e.preventDefault(); dropIssue.classList.remove("border-purple-500", "bg-purple-50"); if (e.dataTransfer.files.length > 0) processIssueFile(e.dataTransfer.files[0]); });
+
+      // 4. Sales Drop
+      const fileSales = document.getElementById("fileSales");
+      const dropSales = document.getElementById("dropAreaSales");
+      fileSales.addEventListener("change", (e) => { if (e.target.files.length > 0) processSalesFile(e.target.files[0]); });
+      dropSales.addEventListener("dragover", (e) => { e.preventDefault(); dropSales.classList.add("border-emerald-500", "bg-emerald-50"); });
+      dropSales.addEventListener("dragleave", () => { dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); });
+      dropSales.addEventListener("drop", (e) => { e.preventDefault(); dropSales.classList.remove("border-emerald-500", "bg-emerald-50"); if (e.dataTransfer.files.length > 0) processSalesFile(e.dataTransfer.files[0]); });
+
+      // 5. GEP Receipt Drop
+      const fileGepReceipt = document.getElementById("fileGepReceipt");
+      const dropGepReceipt = document.getElementById("dropAreaGepReceipt");
+      fileGepReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processGepOrTepReceiptFile(e.target.files[0], "GEP"); });
+      dropGepReceipt.addEventListener("dragover", (e) => { e.preventDefault(); dropGepReceipt.classList.add("border-amber-500", "bg-amber-50"); });
+      dropGepReceipt.addEventListener("dragleave", () => { dropGepReceipt.classList.remove("border-amber-500", "bg-amber-50"); });
+      dropGepReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropGepReceipt.classList.remove("border-amber-500", "bg-amber-50"); if (e.dataTransfer.files.length > 0) processGepOrTepReceiptFile(e.dataTransfer.files[0], "GEP"); });
+
+      // 6. TEP Receipt Drop
+      const fileTepReceipt = document.getElementById("fileTepReceipt");
+      const dropTepReceipt = document.getElementById("dropAreaTepReceipt");
+      fileTepReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processGepOrTepReceiptFile(e.target.files[0], "TEP"); });
+      dropTepReceipt.addEventListener("dragover", (e) => { e.preventDefault(); dropTepReceipt.classList.add("border-indigo-500", "bg-indigo-50"); });
+      dropTepReceipt.addEventListener("dragleave", () => { dropTepReceipt.classList.remove("border-indigo-500", "bg-indigo-50"); });
+      dropTepReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropTepReceipt.classList.remove("border-indigo-500", "bg-indigo-50"); if (e.dataTransfer.files.length > 0) processGepOrTepReceiptFile(e.dataTransfer.files[0], "TEP"); });
+
+      // Month Selection & Lock
+      document.getElementById("monthSelect").addEventListener("change", async (e) => {
+        currentActiveMonth = e.target.value;
+        currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
+          month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, grn: {}
+        };
+        const btn = document.getElementById("btnArchiveMonth");
+        btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
+        updateUploadCardsStatus();
+        renderDashboard();
+      });
+
+      document.getElementById("btnArchiveMonth").addEventListener("click", async () => {
+        if (!currentMonthData) return;
+        currentMonthData.isArchived = !currentMonthData.isArchived;
+        await saveMonthRecord(currentMonthData);
+        await refreshMonthDropdown();
+        alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
+      });
+
+      document.getElementById("dateSelect").addEventListener("change", renderDashboard);
+      document.getElementById("chkGrossWeight").addEventListener("change", renderDashboard);
+      document.getElementById("chkPreTax").addEventListener("change", renderDashboard);
+
+      // Manage Uploads Modal
+      document.getElementById("btnOpenManage").addEventListener("click", () => {
+        try {
+          renderManageList();
+        } catch (e) {
+          console.error("renderManageList error:", e);
+        }
+        document.getElementById("manageModal").classList.remove("hidden");
+      });
+
+      document.getElementById("btnCloseManage").addEventListener("click", () => {
+        document.getElementById("manageModal").classList.add("hidden");
+      });
+
+      document.getElementById("btnClearAll").addEventListener("click", async () => {
+        if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
+          await clearAllData();
+          await refreshDayList();
+          await refreshMonthDropdown();
+          renderManageList();
+          document.getElementById("manageModal").classList.add("hidden");
+          alert("All historical records cleared.");
+        }
+      });
+
+      // Backup & Restore
+      document.getElementById("btnBackup").addEventListener("click", async () => {
+        const days = await getAllDayRecords();
+        const months = await getAllMonthRecords();
+        if (days.length === 0 && months.length === 0) return alert("No history to backup.");
+        const exportData = { days, months, exportDate: new Date().toISOString() };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const dl = document.createElement("a");
+        dl.setAttribute("href", dataStr);
+        dl.setAttribute("download", `stock_history_backup_${new Date().toISOString().slice(0, 10)}.json`);
+        document.body.appendChild(dl);
+        dl.click();
+        dl.remove();
+      });
+
+      document.getElementById("restoreInput").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const parsed = JSON.parse(evt.target.result);
+            if (parsed.days) {
+              for (const item of parsed.days) await saveDayRecord(item);
+            }
+            if (parsed.months) {
+              for (const m of parsed.months) await saveMonthRecord(m);
+            }
+            await refreshDayList();
+            await refreshMonthDropdown();
+            alert("Backup restored successfully!");
+          } catch (err) {
+            alert("Failed to restore backup: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+  </script>
+</body>
+</html>
