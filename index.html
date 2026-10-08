@@ -240,7 +240,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
             <h2 class="text-base font-bold text-slate-900">Data Upload Workspace</h2>
-            <p class="text-xs text-slate-500">Upload your daily morning reports and cumulative monthly transaction dumps</p>
+            <p class="text-xs text-slate-500">Upload daily live stock reports and cumulative monthly transaction dumps</p>
           </div>
           <div class="flex items-center gap-3">
             <span id="dataCenterMapBadge" class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-800">Loading Map...</span>
@@ -599,8 +599,9 @@
     }
 
     function parseDateStr(str) {
-      if (!str) return new Date(0);
+      if (!str || typeof str !== 'string') return new Date(0);
       const parts = str.split("-").map(Number);
+      if (parts.length < 3 || isNaN(parts[0])) return new Date(0);
       return new Date(parts[2], parts[1] - 1, parts[0]);
     }
 
@@ -651,6 +652,8 @@
         counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
       });
       const coinData = { gold: {}, silver: {} };
+
+      if (!Array.isArray(rawItems)) return counterAggregates;
 
       rawItems.forEach(item => {
         const { counter, finalCat } = resolveCounter(item.origGroup, item.origCat, item.binCode);
@@ -703,22 +706,26 @@
     }
 
     // --- DOMContentLoaded Initialization ---
+    // Rule #1: Bind synchronous listeners and UI handlers immediately so buttons never die!
     window.addEventListener("DOMContentLoaded", async () => {
+      // 1. Synchronous setup
+      renderTallyCounterButtons();
+      renderSalesCounterButtons();
+      setupNavigationHandlers();
+      setupEventListeners();
+
+      // 2. Safe async data hydration
       try {
         if (navigator.storage && navigator.storage.persist) {
           navigator.storage.persist();
         }
-
         await openDatabase();
         await loadMappingMaster();
         await refreshMonthDropdown();
-        await refreshDayList();
         await initYtdBaseline();
-
-        setupNavigationHandlers();
-        setupEventListeners();
+        await refreshDayList();
       } catch (err) {
-        console.error("Initialization error:", err);
+        console.error("Initialization warning:", err);
       }
     });
 
@@ -775,8 +782,6 @@
           badgeData.textContent = "Map Missing";
           badgeData.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-rose-100 text-rose-800";
         }
-        renderTallyCounterButtons();
-        renderSalesCounterButtons();
       }
     }
 
@@ -832,53 +837,62 @@
       const viewDataCenter = document.getElementById("viewDataCenter");
 
       function switchView(activeNav, activeView) {
+        if (!activeNav || !activeView) return;
         [navBtnTally, navBtnSales, navBtnData].forEach(btn => {
-          btn.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer";
+          if (btn) btn.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer";
         });
         activeNav.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition-all cursor-pointer";
 
-        [viewTallyDesk, viewSalesDesk, viewDataCenter].forEach(v => v.classList.add("hidden"));
+        [viewTallyDesk, viewSalesDesk, viewDataCenter].forEach(v => {
+          if (v) v.classList.add("hidden");
+        });
         activeView.classList.remove("hidden");
 
         if (activeView === viewTallyDesk) renderTallyDashboard();
         if (activeView === viewSalesDesk) renderSalesDesk();
       }
 
-      navBtnTally.addEventListener("click", () => switchView(navBtnTally, viewTallyDesk));
-      navBtnSales.addEventListener("click", () => switchView(navBtnSales, viewSalesDesk));
-      navBtnData.addEventListener("click", () => switchView(navBtnData, viewDataCenter));
+      if (navBtnTally) navBtnTally.onclick = () => switchView(navBtnTally, viewTallyDesk);
+      if (navBtnSales) navBtnSales.onclick = () => switchView(navBtnSales, viewSalesDesk);
+      if (navBtnData) navBtnData.onclick = () => switchView(navBtnData, viewDataCenter);
 
       const salesSubTabSummary = document.getElementById("salesSubTabSummary");
       const salesSubTabProducts = document.getElementById("salesSubTabProducts");
       const salesSummaryContainer = document.getElementById("salesSummaryContainer");
       const salesProductsContainer = document.getElementById("salesProductsContainer");
 
-      salesSubTabSummary.addEventListener("click", () => {
-        activeSalesSubTab = "summary";
-        salesSubTabSummary.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
-        salesSubTabProducts.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
-        salesSummaryContainer.classList.remove("hidden");
-        salesProductsContainer.classList.add("hidden");
-        renderSalesDesk();
-      });
+      if (salesSubTabSummary && salesSubTabProducts) {
+        salesSubTabSummary.onclick = () => {
+          activeSalesSubTab = "summary";
+          salesSubTabSummary.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
+          salesSubTabProducts.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
+          if (salesSummaryContainer) salesSummaryContainer.classList.remove("hidden");
+          if (salesProductsContainer) salesProductsContainer.classList.add("hidden");
+          renderSalesDesk();
+        };
 
-      salesSubTabProducts.addEventListener("click", () => {
-        activeSalesSubTab = "products";
-        salesSubTabProducts.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
-        salesSubTabSummary.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
-        salesProductsContainer.classList.remove("hidden");
-        salesSummaryContainer.classList.add("hidden");
-        renderSalesDesk();
-      });
+        salesSubTabProducts.onclick = () => {
+          activeSalesSubTab = "products";
+          salesSubTabProducts.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
+          salesSubTabSummary.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
+          if (salesProductsContainer) salesProductsContainer.classList.remove("hidden");
+          if (salesSummaryContainer) salesSummaryContainer.classList.add("hidden");
+          renderSalesDesk();
+        };
+      }
     }
 
     async function initYtdBaseline() {
-      currentYtdBaseline = await getYtdBaseline(currentActiveMonth);
-      if (!currentYtdBaseline) {
-        currentYtdBaseline = { month: currentActiveMonth, baselines: { ...defaultYtdPrior } };
-        await saveYtdBaseline(currentYtdBaseline);
+      try {
+        currentYtdBaseline = await getYtdBaseline(currentActiveMonth);
+        if (!currentYtdBaseline) {
+          currentYtdBaseline = { month: currentActiveMonth, baselines: { ...defaultYtdPrior } };
+          await saveYtdBaseline(currentYtdBaseline);
+        }
+        renderYtdInputsGrid();
+      } catch (e) {
+        console.warn("YTD baseline load error:", e);
       }
-      renderYtdInputsGrid();
     }
 
     function renderYtdInputsGrid() {
@@ -967,12 +981,14 @@
 
           await saveDayRecord(dayRecord);
           await refreshDayList();
-          document.getElementById("tallyDateSelect").value = fileDate;
-          document.getElementById("salesDateSelect").value = fileDate;
+          const selTally = document.getElementById("tallyDateSelect");
+          if (selTally) selTally.value = fileDate;
           renderTallyDashboard();
-          renderSalesDesk();
-          document.getElementById("liveStatus").textContent = `Loaded ${fileDate}`;
-          document.getElementById("liveStatus").className = "text-[10px] text-emerald-600 font-bold";
+          const liveSt = document.getElementById("liveStatus");
+          if (liveSt) {
+            liveSt.textContent = `Loaded ${fileDate}`;
+            liveSt.className = "text-[10px] text-emerald-600 font-bold";
+          }
         } catch (err) {
           console.error(err);
           alert("Error parsing live stock file.");
@@ -1383,8 +1399,9 @@
       updateUploadCardsStatus();
     }
 
-    // Dynamic Closing Resolver with Consecutive Day Validation
+    // Dynamic Closing Resolver with Safe Fallbacks
     function getResolvedDayStock(selectedDate) {
+      if (!allDayRecords || allDayRecords.length === 0) return null;
       const idx = allDayRecords.findIndex(d => d.date === selectedDate);
       if (idx === -1) return null;
 
@@ -1424,19 +1441,6 @@
       allDayRecords = await getAllDayRecords();
       allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
 
-      for (let day of allDayRecords) {
-        let changed = false;
-        if (day.opening && day.opening.rawItems) {
-          day.opening.counters = computeAggregatesFromItems(day.opening.rawItems);
-          changed = true;
-        }
-        if (day.closing && day.closing.rawItems) {
-          day.closing.counters = computeAggregatesFromItems(day.closing.rawItems);
-          changed = true;
-        }
-        if (changed) await saveDayRecord(day);
-      }
-
       const selTally = document.getElementById("tallyDateSelect");
       const selSales = document.getElementById("salesDateSelect");
 
@@ -1462,6 +1466,26 @@
 
       renderTallyDashboard();
       renderSalesDesk();
+    }
+
+    function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
+      const res = { qty: 0, categories: {} };
+      if (!mRec) return res;
+
+      const addRec = (subDict) => {
+        const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
+        if (item) {
+          res.qty += Number(item.qty) || 0;
+          Object.keys(item.categories || {}).forEach(k => {
+            res.categories[k] = (res.categories[k] || 0) + (Number(item.categories[k]) || 0);
+          });
+        }
+      };
+
+      addRec(mRec.receipts);
+      addRec(mRec.gep_receipts);
+      addRec(mRec.tep_receipts);
+      return res;
     }
 
     function renderTallyDashboard() {
@@ -1513,11 +1537,21 @@
       if (openExtraEl) openExtraEl.classList.toggle("hidden", !showGross && !showVal);
       if (closeExtraEl) closeExtraEl.classList.toggle("hidden", !showGross && !showVal);
 
-      const openData = (hasOpening && resolved.opening.counters && resolved.opening.counters[currentTallyCounter]) 
-        ? resolved.opening.counters[currentTallyCounter] : { qty: 0, gross: 0, value: 0, categories: {} };
+      // Safe Data Extraction
+      let openData = { qty: 0, gross: 0, value: 0, categories: {} };
+      if (hasOpening && resolved.opening) {
+        if (resolved.opening.counters && resolved.opening.counters[currentTallyCounter]) {
+          openData = resolved.opening.counters[currentTallyCounter];
+        } else if (resolved.opening.rawItems) {
+          const fresh = computeAggregatesFromItems(resolved.opening.rawItems);
+          if (fresh[currentTallyCounter]) openData = fresh[currentTallyCounter];
+        }
+      }
 
-      const closeData = (hasClosing && resolved.closingCounters && resolved.closingCounters[currentTallyCounter]) 
-        ? resolved.closingCounters[currentTallyCounter] : null;
+      let closeData = null;
+      if (hasClosing && resolved.closingCounters) {
+        closeData = resolved.closingCounters[currentTallyCounter] || null;
+      }
 
       const mRec = currentMonthData || {};
       const recDate = getConsolidatedReceipts(mRec, selectedDate, currentTallyCounter);
@@ -1530,9 +1564,9 @@
       const openQtyEl = document.getElementById("tallyOpenQty");
       const openGrossEl = document.getElementById("tallyOpenGross");
       const openValEl = document.getElementById("tallyOpenVal");
-      if (openQtyEl) openQtyEl.textContent = hasOpening ? openData.qty.toLocaleString() : "—";
-      if (openGrossEl) openGrossEl.textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
-      if (openValEl) openValEl.textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
+      if (openQtyEl) openQtyEl.textContent = hasOpening ? (openData.qty || 0).toLocaleString() : "—";
+      if (openGrossEl) openGrossEl.textContent = hasOpening ? `${(openData.gross || 0).toFixed(3)} g` : "—";
+      if (openValEl) openValEl.textContent = hasOpening ? `₹${Math.round(openData.value || 0).toLocaleString()}` : "—";
 
       const transQtyEl = document.getElementById("tallyTransQty");
       if (transQtyEl) {
@@ -1555,9 +1589,9 @@
 
       if (hasClosing && closeData) {
         if (closeQtyUnit) closeQtyUnit.classList.remove("hidden");
-        if (closeQtyEl) closeQtyEl.textContent = closeData.qty.toLocaleString();
-        if (closeGrossEl) closeGrossEl.textContent = `${closeData.gross.toFixed(3)} g`;
-        if (closeValEl) closeValEl.textContent = `₹${Math.round(closeData.value).toLocaleString()}`;
+        if (closeQtyEl) closeQtyEl.textContent = (closeData.qty || 0).toLocaleString();
+        if (closeGrossEl) closeGrossEl.textContent = `${(closeData.gross || 0).toFixed(3)} g`;
+        if (closeValEl) closeValEl.textContent = `₹${Math.round(closeData.value || 0).toLocaleString()}`;
       } else {
         if (closeQtyUnit) closeQtyUnit.classList.add("hidden");
         if (closeQtyEl) closeQtyEl.textContent = "—";
@@ -1571,8 +1605,8 @@
       const diffStatusText = document.getElementById("tallyDiffStatusText");
 
       if (hasClosing && closeData) {
-        const systemClosing = openData.qty + netTransactions;
-        const diffQty = closeData.qty - systemClosing;
+        const systemClosing = (openData.qty || 0) + netTransactions;
+        const diffQty = (closeData.qty || 0) - systemClosing;
 
         if (diffQtyEl) diffQtyEl.textContent = diffQty > 0 ? `+${diffQty}` : `${diffQty}`;
         if (diffQty === 0) {
@@ -1603,12 +1637,12 @@
     }
 
     function renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
-      const openCategories = openData.categories || {};
+      const openCategories = (openData && openData.categories) ? openData.categories : {};
       const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
-      const recCategories = recDate.categories || {};
-      const grnCategories = grnDate.categories || {};
-      const issCategories = issDate.categories || {};
-      const saleCategories = saleDate.categories || {};
+      const recCategories = (recDate && recDate.categories) ? recDate.categories : {};
+      const grnCategories = (grnDate && grnDate.categories) ? grnDate.categories : {};
+      const issCategories = (issDate && issDate.categories) ? issDate.categories : {};
+      const saleCategories = (saleDate && saleDate.categories) ? saleDate.categories : {};
 
       const allCatKeys = Array.from(new Set([
         ...Object.keys(openCategories),
@@ -1693,7 +1727,7 @@
     }
 
     function renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
-      const openCoins = openData.coinBreakdown || { gold: {}, silver: {} };
+      const openCoins = (openData && openData.coinBreakdown) ? openData.coinBreakdown : { gold: {}, silver: {} };
       const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
 
       function buildCoinRows(metalKey) {
@@ -2155,7 +2189,7 @@
               </span>
             </div>
             <div class="text-xs text-slate-500 space-y-0.5">
-              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime} ${openFile}` : 'None'}</span></p>
               <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : (resolved ? resolved.closingTimeLabel : 'Pending')}</span></p>
             </div>
           </div>
@@ -2309,30 +2343,30 @@
       const containerMonths = document.getElementById("manageListContainerMonths");
 
       if (tabBtnDays && tabBtnMonths) {
-        tabBtnDays.addEventListener("click", () => {
+        tabBtnDays.onclick = () => {
           tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
           tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
-          containerDays.classList.remove("hidden");
-          containerMonths.classList.add("hidden");
-        });
+          if (containerDays) containerDays.classList.remove("hidden");
+          if (containerMonths) containerMonths.classList.add("hidden");
+        };
 
-        tabBtnMonths.addEventListener("click", () => {
+        tabBtnMonths.onclick = () => {
           tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
           tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
-          containerMonths.classList.remove("hidden");
-          containerDays.classList.add("hidden");
+          if (containerMonths) containerMonths.classList.remove("hidden");
+          if (containerDays) containerDays.classList.add("hidden");
           renderManageMonthsList();
-        });
+        };
       }
 
       const bindDrop = (dropId, fileId, handler) => {
         const drop = document.getElementById(dropId);
         const file = document.getElementById(fileId);
         if (!drop || !file) return;
-        file.addEventListener("change", (e) => { if (e.target.files.length > 0) handler(e.target.files[0]); });
-        drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("border-amber-500", "bg-amber-100/50"); });
-        drop.addEventListener("dragleave", () => { drop.classList.remove("border-amber-500", "bg-amber-100/50"); });
-        drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) handler(e.dataTransfer.files[0]); });
+        file.onchange = (e) => { if (e.target.files.length > 0) handler(e.target.files[0]); };
+        drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("border-amber-500", "bg-amber-100/50"); };
+        drop.ondragleave = () => { drop.classList.remove("border-amber-500", "bg-amber-100/50"); };
+        drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) handler(e.dataTransfer.files[0]); };
       };
 
       bindDrop("dropAreaLive", "fileLive", processLiveStockFile);
@@ -2347,28 +2381,28 @@
       const selSales = document.getElementById("salesDateSelect");
 
       if (selTally) {
-        selTally.addEventListener("change", (e) => {
+        selTally.onchange = (e) => {
           if (selSales) selSales.value = e.target.value;
           renderTallyDashboard();
           renderSalesDesk();
-        });
+        };
       }
       if (selSales) {
-        selSales.addEventListener("change", (e) => {
+        selSales.onchange = (e) => {
           if (selTally) selTally.value = e.target.value;
           renderTallyDashboard();
           renderSalesDesk();
-        });
+        };
       }
 
       const chkGross = document.getElementById("chkGrossWeight");
       const chkPre = document.getElementById("chkPreTax");
-      if (chkGross) chkGross.addEventListener("change", renderTallyDashboard);
-      if (chkPre) chkPre.addEventListener("change", renderTallyDashboard);
+      if (chkGross) chkGross.onchange = renderTallyDashboard;
+      if (chkPre) chkPre.onchange = renderTallyDashboard;
 
       const selDataMonth = document.getElementById("dataCenterMonthSelect");
       if (selDataMonth) {
-        selDataMonth.addEventListener("change", async (e) => {
+        selDataMonth.onchange = async (e) => {
           currentActiveMonth = e.target.value;
           currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
             month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}
@@ -2379,37 +2413,37 @@
           updateUploadCardsStatus();
           renderTallyDashboard();
           renderSalesDesk();
-        });
+        };
       }
 
       const btnArchive = document.getElementById("btnArchiveMonth");
       if (btnArchive) {
-        btnArchive.addEventListener("click", async () => {
+        btnArchive.onclick = async () => {
           if (!currentMonthData) return;
           currentMonthData.isArchived = !currentMonthData.isArchived;
           await saveMonthRecord(currentMonthData);
           await refreshMonthDropdown();
           alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
-        });
+        };
       }
 
       const btnOpenManage = document.getElementById("btnOpenManage");
       const btnCloseManage = document.getElementById("btnCloseManage");
       const manageModal = document.getElementById("manageModal");
 
-      if (btnOpenManage) btnOpenManage.addEventListener("click", () => { renderManageList(); manageModal.classList.remove("hidden"); });
-      if (btnCloseManage) btnCloseManage.addEventListener("click", () => manageModal.classList.add("hidden"));
+      if (btnOpenManage) btnOpenManage.onclick = () => { renderManageList(); if (manageModal) manageModal.classList.remove("hidden"); };
+      if (btnCloseManage) btnCloseManage.onclick = () => { if (manageModal) manageModal.classList.add("hidden"); };
 
       const btnOpenYtd = document.getElementById("btnOpenYtdModal");
       const btnCloseYtd = document.getElementById("btnCloseYtdModal");
       const ytdModal = document.getElementById("ytdModal");
 
-      if (btnOpenYtd) btnOpenYtd.addEventListener("click", () => ytdModal.classList.remove("hidden"));
-      if (btnCloseYtd) btnCloseYtd.addEventListener("click", () => ytdModal.classList.add("hidden"));
+      if (btnOpenYtd) btnOpenYtd.onclick = () => { if (ytdModal) ytdModal.classList.remove("hidden"); };
+      if (btnCloseYtd) btnCloseYtd.onclick = () => { if (ytdModal) ytdModal.classList.add("hidden"); };
 
       const btnSaveYtd = document.getElementById("btnSaveYtdBaseline");
       if (btnSaveYtd) {
-        btnSaveYtd.addEventListener("click", async () => {
+        btnSaveYtd.onclick = async () => {
           const ytdInp = document.getElementById("ytdTargetMonth");
           const targetMonth = (ytdInp ? ytdInp.value.trim() : "") || currentActiveMonth;
           const inputs = document.querySelectorAll("[data-ytd-key]");
@@ -2418,30 +2452,30 @@
 
           currentYtdBaseline = { month: targetMonth, baselines: baselines };
           await saveYtdBaseline(currentYtdBaseline);
-          ytdModal.classList.add("hidden");
+          if (ytdModal) ytdModal.classList.add("hidden");
           renderSalesDesk();
           alert(`Successfully saved YTD baseline for ${targetMonth}!`);
-        });
+        };
       }
 
       const btnClearAll = document.getElementById("btnClearAll");
       if (btnClearAll) {
-        btnClearAll.addEventListener("click", async () => {
+        btnClearAll.onclick = async () => {
           if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
             await clearAllData();
             await refreshDayList();
             await refreshMonthDropdown();
             await initYtdBaseline();
             renderManageList();
-            manageModal.classList.add("hidden");
+            if (manageModal) manageModal.classList.add("hidden");
             alert("All historical records cleared.");
           }
-        });
+        };
       }
 
       const btnBackup = document.getElementById("btnBackup");
       if (btnBackup) {
-        btnBackup.addEventListener("click", async () => {
+        btnBackup.onclick = async () => {
           const days = await getAllDayRecords();
           const months = await getAllMonthRecords();
           const ytd = currentYtdBaseline;
@@ -2454,12 +2488,12 @@
           document.body.appendChild(dl);
           dl.click();
           dl.remove();
-        });
+        };
       }
 
       const restoreInput = document.getElementById("restoreInput");
       if (restoreInput) {
-        restoreInput.addEventListener("change", (e) => {
+        restoreInput.onchange = (e) => {
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
@@ -2484,7 +2518,7 @@
             }
           };
           reader.readAsText(file);
-        });
+        };
       }
     }
   </script>
