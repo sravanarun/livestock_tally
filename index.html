@@ -35,7 +35,7 @@
         <button id="btnOpenManage" type="button" class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1.5 cursor-pointer">
           <span>⚙</span> Manage Uploads
         </button>
-        <button id="btnBackup" type="button" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+        <button id="btnBackup" type="button" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 cursor-pointer">
           ⬇ Export Backup
         </button>
         <label for="restoreInput" class="text-xs font-medium px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md cursor-pointer transition-colors border border-slate-300">
@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <!-- Upload Cards Grid: 6 Cards -->
+      <!-- Upload Cards Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         <!-- 1. Daily Live Stock -->
         <div class="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 rounded-xl p-3 flex flex-col justify-between transition-all" id="dropAreaLive">
@@ -82,7 +82,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="liveStatus" class="text-[10px] text-slate-400">Ready</span>
             <input type="file" id="fileLive" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileLive').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors cursor-pointer">
+            <button onclick="document.getElementById('fileLive').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -100,7 +100,7 @@
           <div class="mt-3 flex items-center justify-between">
             <span id="receiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
             <input type="file" id="fileReceipt" accept=".xlsx, .xls" class="hidden" />
-            <button onclick="document.getElementById('fileReceipt').click()" type="button" class="text-xs font-semibold px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer">
+            <button onclick="document.getElementById('fileReceipt').click()" type="button" class="text-xs font-semibold px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer">
               Browse
             </button>
           </div>
@@ -291,7 +291,7 @@
           <div class="flex justify-between items-start mb-2">
             <div>
               <span id="diffTitle" class="text-xs font-bold uppercase tracking-wider text-slate-600">Tally Difference</span>
-              <p class="text-[11px] text-slate-400 mt-0.5">Physical − System</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Closing − System Expected</p>
             </div>
             <span class="text-xl">⚖️</span>
           </div>
@@ -354,7 +354,7 @@
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 5;
+    const DB_VERSION = 6;
     let db;
 
     function openDatabase() {
@@ -474,6 +474,22 @@
       return Number(catData) || 0;
     }
 
+    function parseDateStr(str) {
+      if (!str) return new Date(0);
+      const parts = str.split("-").map(Number);
+      return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+
+    // Calendar check: returns true ONLY if date2 is exactly 1 calendar day after date1
+    function isConsecutiveDay(dateStr1, dateStr2) {
+      if (!dateStr1 || !dateStr2) return false;
+      const d1 = parseDateStr(dateStr1);
+      const d2 = parseDateStr(dateStr2);
+      const diffTime = d2.getTime() - d1.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays === 1;
+    }
+
     window.addEventListener("DOMContentLoaded", async () => {
       if (navigator.storage && navigator.storage.persist) {
         navigator.storage.persist();
@@ -571,7 +587,9 @@
       return null;
     }
 
-    // STRICT ISOLATION: GEP & TEP bins are 100% ISOLATED as their own category & counter
+    // STRICT ISOLATION RULE:
+    // GEP and TEP bins are ALWAYS extracted and forced to their own category/counter.
+    // They NEVER touch "OTHERS" or "WEDDING".
     function resolveCounter(origGroup, origCat, binCode) {
       const cleanBin = String(binCode || "").trim().toUpperCase();
       if (cleanBin === "GEP") {
@@ -597,6 +615,64 @@
       return { counter, finalGroup, finalCat };
     }
 
+    // Helper: Compute Aggregates from Raw Items List (Allows Auto-Updates without Re-uploading)
+    function computeAggregatesFromItems(rawItems) {
+      const counterAggregates = {};
+      availableCounters.forEach(c => {
+        counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
+      });
+      const coinData = { gold: {}, silver: {} };
+
+      rawItems.forEach(item => {
+        const { counter, finalCat } = resolveCounter(item.origGroup, item.origCat, item.binCode);
+        const qty = Number(item.qty || 1);
+        const gross = Number(item.gross || 0);
+        const val = Number(item.val || 0);
+        const unitWeight = Number(item.unitWeight || 0);
+
+        let categoryDisplayKey = finalCat;
+        if (counter === "BANGLE") {
+          const setChar = (item.itemCode && item.itemCode.length >= 11) ? item.itemCode.charAt(10) : "";
+          if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
+          else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
+          else if (setChar === "4") categoryDisplayKey = "Set 4 (Set of 4)";
+          else if (setChar) categoryDisplayKey = `Set ${setChar}`;
+          else categoryDisplayKey = "Other Bangles";
+        }
+
+        if (counter === "COIN") {
+          const coinKaratChar = (item.itemCode && item.itemCode.length >= 12) ? item.itemCode.charAt(11).toUpperCase() : "";
+          const isSilver = (coinKaratChar === "A") || (String(item.origGroup || '').toLowerCase().includes("silver"));
+          const targetDict = isSilver ? coinData.silver : coinData.gold;
+          targetDict[unitWeight] = (targetDict[unitWeight] || 0) + qty;
+        }
+
+        if (!counterAggregates[counter]) {
+          counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
+        }
+
+        counterAggregates[counter].qty += qty;
+        counterAggregates[counter].gross += gross;
+        counterAggregates[counter].value += val;
+        counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
+
+        // In ALL Counter:
+        counterAggregates["ALL"].qty += qty;
+        counterAggregates["ALL"].gross += gross;
+        counterAggregates["ALL"].value += val;
+
+        const allCatKey = (counter === "BANGLE") ? "BANGLES" : categoryDisplayKey;
+        counterAggregates["ALL"].categories[allCatKey] = (counterAggregates["ALL"].categories[allCatKey] || 0) + qty;
+      });
+
+      if (!counterAggregates["COIN"]) {
+        counterAggregates["COIN"] = { qty: 0, gross: 0, value: 0, categories: {} };
+      }
+      counterAggregates["COIN"].coinBreakdown = coinData;
+
+      return counterAggregates;
+    }
+
     // --- Parse 1: Daily Live Stock ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
@@ -612,63 +688,19 @@
           let fileDate = dateMatch ? dateMatch[1].replace(/_/g, "-") : normalizeDate(new Date());
           let fileTime = timeMatch ? timeMatch[1].replace(/[-_]/g, ":") : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-          const counterAggregates = {};
-          availableCounters.forEach(c => {
-            counterAggregates[c] = { qty: 0, gross: 0, value: 0, categories: {} };
-          });
-          const coinData = { gold: {}, silver: {} };
+          // Streamline raw items to save in IndexedDB
+          const rawItems = rows.map(r => ({
+            itemCode: String(r["Item Code"] || "").trim(),
+            origGroup: String(r["Product Group Description"] || "").trim(),
+            origCat: String(r["Product Category Description"] || "").trim(),
+            binCode: String(r["Bin Code"] || "").trim().toUpperCase(),
+            qty: Number(r["Quantity"] || 1),
+            gross: Number(r["Gross Weight"] || 0),
+            val: Number(r["Final Price - Pre Tax Value"] || 0),
+            unitWeight: Number(r["Unit Weight"] || 0)
+          }));
 
-          rows.forEach(row => {
-            const itemCode = String(row["Item Code"] || "").trim();
-            const origGroup = String(row["Product Group Description"] || "").trim();
-            const origCat = String(row["Product Category Description"] || "").trim();
-            const binCode = String(row["Bin Code"] || "").trim().toUpperCase();
-
-            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
-            const qty = Number(row["Quantity"] || 1);
-            const gross = Number(row["Gross Weight"] || 0);
-            const val = Number(row["Final Price - Pre Tax Value"] || 0);
-            const unitWeight = Number(row["Unit Weight"] || 0);
-
-            let categoryDisplayKey = finalCat;
-            if (counter === "BANGLE") {
-              const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
-              if (setChar === "1") categoryDisplayKey = "Set 1 (Single)";
-              else if (setChar === "2") categoryDisplayKey = "Set 2 (Pair)";
-              else if (setChar === "4") categoryDisplayKey = "Set 4 (Set of 4)";
-              else if (setChar) categoryDisplayKey = `Set ${setChar}`;
-              else categoryDisplayKey = "Other Bangles";
-            }
-
-            if (counter === "COIN") {
-              const coinKaratChar = itemCode.length >= 12 ? itemCode.charAt(11).toUpperCase() : "";
-              const isSilver = (coinKaratChar === "A") || (origGroup.toLowerCase().includes("silver"));
-              const targetDict = isSilver ? coinData.silver : coinData.gold;
-              targetDict[unitWeight] = (targetDict[unitWeight] || 0) + qty;
-            }
-
-            if (!counterAggregates[counter]) {
-              counterAggregates[counter] = { qty: 0, gross: 0, value: 0, categories: {} };
-            }
-
-            counterAggregates[counter].qty += qty;
-            counterAggregates[counter].gross += gross;
-            counterAggregates[counter].value += val;
-            counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
-
-            // In ALL Counter:
-            counterAggregates["ALL"].qty += qty;
-            counterAggregates["ALL"].gross += gross;
-            counterAggregates["ALL"].value += val;
-
-            const allCatKey = (counter === "BANGLE") ? "BANGLES" : categoryDisplayKey;
-            counterAggregates["ALL"].categories[allCatKey] = (counterAggregates["ALL"].categories[allCatKey] || 0) + qty;
-          });
-
-          if (!counterAggregates["COIN"]) {
-            counterAggregates["COIN"] = { qty: 0, gross: 0, value: 0, categories: {} };
-          }
-          counterAggregates["COIN"].coinBreakdown = coinData;
+          const counterAggregates = computeAggregatesFromItems(rawItems);
 
           let dayRecord = await getDayRecord(fileDate);
           const isMorning = fileTime.toLowerCase().includes("am") || !dayRecord;
@@ -676,12 +708,12 @@
           if (isMorning || !dayRecord || !dayRecord.opening) {
             dayRecord = {
               date: fileDate,
-              opening: { time: fileTime, fileName: file.name, counters: counterAggregates },
+              opening: { time: fileTime, fileName: file.name, counters: counterAggregates, rawItems: rawItems },
               closing: dayRecord ? dayRecord.closing : null,
               isTemporaryClosing: dayRecord ? dayRecord.isTemporaryClosing : false
             };
           } else {
-            dayRecord.closing = { time: fileTime, fileName: file.name, counters: counterAggregates };
+            dayRecord.closing = { time: fileTime, fileName: file.name, counters: counterAggregates, rawItems: rawItems };
             dayRecord.isTemporaryClosing = true;
           }
 
@@ -1051,14 +1083,26 @@
       updateUploadCardsStatus();
     }
 
-    function parseDateStr(str) {
-      const parts = str.split("-").map(Number);
-      return new Date(parts[2], parts[1] - 1, parts[0]);
-    }
-
+    // Refresh Day List & Auto-Recalculate on any Formula / Mapping update
     async function refreshDayList() {
       allDayRecords = await getAllDayRecords();
       allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
+
+      // Auto-recalculate past uploads if raw items exist (No need to re-upload on code updates!)
+      for (let day of allDayRecords) {
+        let changed = false;
+        if (day.opening && day.opening.rawItems) {
+          day.opening.counters = computeAggregatesFromItems(day.opening.rawItems);
+          changed = true;
+        }
+        if (day.closing && day.closing.rawItems) {
+          day.closing.counters = computeAggregatesFromItems(day.closing.rawItems);
+          changed = true;
+        }
+        if (changed) {
+          await saveDayRecord(day);
+        }
+      }
 
       const select = document.getElementById("dateSelect");
       const currentSelected = select.value;
@@ -1083,6 +1127,7 @@
       renderDashboard();
     }
 
+    // Dynamic Closing Resolver with Consecutive Day Validation
     function getResolvedDayStock(selectedDate) {
       const idx = allDayRecords.findIndex(d => d.date === selectedDate);
       if (idx === -1) return null;
@@ -1094,7 +1139,8 @@
       let closingType = "none";
       let closingTimeLabel = "";
 
-      if (nextDay && nextDay.opening) {
+      // Check consecutive calendar day
+      if (nextDay && nextDay.opening && isConsecutiveDay(currentDay.date, nextDay.date)) {
         closingData = nextDay.opening.counters;
         closingType = "finalized";
         closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
@@ -1102,6 +1148,9 @@
         closingData = currentDay.closing.counters;
         closingType = "temporary";
         closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
+      } else if (nextDay && !isConsecutiveDay(currentDay.date, nextDay.date)) {
+        closingType = "none";
+        closingTimeLabel = `Missing Next Day (${getNextCalendarDateStr(currentDay.date)})`;
       }
 
       return {
@@ -1111,6 +1160,12 @@
         closingType: closingType,
         closingTimeLabel: closingTimeLabel
       };
+    }
+
+    function getNextCalendarDateStr(dateStr) {
+      const d = parseDateStr(dateStr);
+      d.setDate(d.getDate() + 1);
+      return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     }
 
     function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
@@ -1186,7 +1241,7 @@
         badge.classList.add("hidden");
         closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
         closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
-        document.getElementById("closingDateSub").textContent = "Pending (Upload midday or tomorrow morning)";
+        document.getElementById("closingDateSub").textContent = resolved.closingTimeLabel || "Pending (Upload midday or tomorrow morning)";
       }
 
       const showGross = document.getElementById("chkGrossWeight").checked;
@@ -1223,7 +1278,7 @@
       document.getElementById("txIss").textContent = `-${issDate.qty || 0}`;
       document.getElementById("txSold").textContent = `-${saleDate.qty || 0}`;
 
-      // Card 3: Closing
+      // Card 3: Closing (Live Stock Physical)
       const closeQtyUnit = document.getElementById("closeQtyUnit");
       if (hasClosing && closeData) {
         closeQtyUnit.classList.remove("hidden");
@@ -1237,7 +1292,7 @@
         document.getElementById("closeVal").textContent = "—";
       }
 
-      // Card 4: Difference
+      // Card 4: Difference (Closing - Expected System Closing)
       const diffAccent = document.getElementById("diffAccent");
       const diffTitle = document.getElementById("diffTitle");
       const diffQtyEl = document.getElementById("diffQty");
@@ -1279,6 +1334,7 @@
       }
     }
 
+    // Detail Reconciliation Table (Showing only single Closing column and internally calculated Difference)
     function renderStandardReconciliationSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
       const openCategories = openData.categories || {};
       const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
@@ -1297,14 +1353,14 @@
       ])).sort();
 
       const sectionTitle = selectedCounter === "BANGLE" 
-        ? "Bangles Reconciliation by Set (Opening + Received + GRN - Issue - Sold = Closing)" 
+        ? "Bangles Reconciliation by Set" 
         : (selectedCounter === "GEP" || selectedCounter === "TEP")
-          ? `${selectedCounter} Reconciliation (Opening + Received + GRN - Issue - Sold = Closing)`
+          ? `${selectedCounter} Reconciliation`
           : "Counter Category Reconciliation Table";
 
       let rowsHtml = "";
       if (allCatKeys.length === 0) {
-        rowsHtml = `<tr><td colspan="9" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
+        rowsHtml = `<tr><td colspan="8" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
       } else {
         allCatKeys.forEach(cat => {
           const oQ = getSafeQty(openCategories[cat]);
@@ -1333,7 +1389,6 @@
               <td class="px-3 py-2.5 text-right font-medium text-emerald-600">${gQ > 0 ? `+${gQ}` : 0}</td>
               <td class="px-3 py-2.5 text-right font-medium text-purple-600">${iQ > 0 ? `-${iQ}` : 0}</td>
               <td class="px-3 py-2.5 text-right font-medium text-rose-600">${sQ > 0 ? `-${sQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-semibold text-slate-700">${hasOpening ? systemClosing : "—"}</td>
               <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
               <td class="px-4 py-2.5 text-right ${diffClass}">${diffDisplay}</td>
             </tr>
@@ -1359,8 +1414,7 @@
                   <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
                   <th class="px-3 py-3 text-right text-purple-700">-Iss</th>
                   <th class="px-3 py-3 text-right text-rose-700">-Sold</th>
-                  <th class="px-3 py-3 text-right">System Cl.</th>
-                  <th class="px-3 py-3 text-right">Physical Cl.</th>
+                  <th class="px-3 py-3 text-right font-bold text-slate-800">Closing</th>
                   <th class="px-4 py-3 text-right">Difference</th>
                 </tr>
               </thead>
@@ -1513,7 +1567,7 @@
             </div>
             <div class="text-xs text-slate-500 space-y-0.5">
               <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
-              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : 'Pending'}</span></p>
+              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : (resolved ? resolved.closingTimeLabel : 'Pending')}</span></p>
             </div>
           </div>
           <div class="flex items-center gap-2 self-end md:self-center">
@@ -1648,6 +1702,7 @@
       });
     }
 
+    // --- Deletion Handlers ---
     window.handleClearClosing = async function(dateStr) {
       if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
@@ -1694,15 +1749,44 @@
       renderDashboard();
     };
 
-    window.copyCurrentReconciliation = function(date) {
-      let text = `Date: ${date} | Counter: ${selectedCounter}\n`;
-      const table = document.getElementById("reconcileTable");
-      if (table) {
-        Array.from(table.querySelectorAll("tr")).forEach(r => {
-          text += Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim()).join("\t") + "\n";
+    // Excel Clipboard Formatter: Supports Direct Paste into Excel Grid Cells
+    window.copyCurrentReconciliation = async function(date) {
+      const table = document.getElementById("reconcileTable") || document.getElementById("goldCoinsTable");
+      if (!table) return alert("No table data to copy.");
+
+      let tsvText = "";
+      let htmlTable = `<table border="1">`;
+
+      Array.from(table.querySelectorAll("tr")).forEach(r => {
+        htmlTable += "<tr>";
+        const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim());
+        tsvText += rowCells.join("\t") + "\r\n";
+        rowCells.forEach(cellText => {
+          htmlTable += `<td>${cellText}</td>`;
+        });
+        htmlTable += "</tr>";
+      });
+      htmlTable += "</table>";
+
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          const textBlob = new Blob([tsvText], { type: "text/plain" });
+          const htmlBlob = new Blob([htmlTable], { type: "text/html" });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": textBlob,
+              "text/html": htmlBlob
+            })
+          ]);
+        } else {
+          await navigator.clipboard.writeText(tsvText);
+        }
+        alert("Copied table to clipboard! You can now press Ctrl + V directly inside Microsoft Excel.");
+      } catch (err) {
+        navigator.clipboard.writeText(tsvText).then(() => {
+          alert("Copied table as tab-separated text for Excel pasting!");
         });
       }
-      navigator.clipboard.writeText(text).then(() => alert("Copied reconciliation to clipboard!"));
     };
 
     function setupEventListeners() {
@@ -1757,7 +1841,7 @@
       const fileGepReceipt = document.getElementById("fileGepReceipt");
       const dropGepReceipt = document.getElementById("dropAreaGepReceipt");
       fileGepReceipt.addEventListener("change", (e) => { if (e.target.files.length > 0) processGepOrTepReceiptFile(e.target.files[0], "GEP"); });
-      dropGepReceipt.addEventListener("dragover", (e) => { e.preventDefault(); dropGepReceipt.classList.add("border-amber-500", "bg-amber-100/50"); });
+      dropGepReceipt.addEventListener("dragover", (e) => { e.preventDefault(); dropGepReceipt.classList.add("border-amber-500", "bg-amber-50"); });
       dropGepReceipt.addEventListener("dragleave", () => { dropGepReceipt.classList.remove("border-amber-500", "bg-amber-100/50"); });
       dropGepReceipt.addEventListener("drop", (e) => { e.preventDefault(); dropGepReceipt.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) processGepOrTepReceiptFile(e.dataTransfer.files[0], "GEP"); });
 
