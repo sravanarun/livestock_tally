@@ -441,7 +441,7 @@
   </div>
 
   <script>
-    // --- IndexedDB Database Configuration ---
+    // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
     const DB_VERSION = 7;
     let db;
@@ -685,6 +685,7 @@
         counterAggregates[counter].value += val;
         counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
 
+        // In ALL Counter
         counterAggregates["ALL"].qty += qty;
         counterAggregates["ALL"].gross += gross;
         counterAggregates["ALL"].value += val;
@@ -1382,6 +1383,43 @@
       updateUploadCardsStatus();
     }
 
+    // Dynamic Closing Resolver with Consecutive Day Validation
+    function getResolvedDayStock(selectedDate) {
+      const idx = allDayRecords.findIndex(d => d.date === selectedDate);
+      if (idx === -1) return null;
+
+      const currentDay = allDayRecords[idx];
+      const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
+
+      let closingData = null;
+      let closingType = "none";
+      let closingTimeLabel = "";
+
+      if (nextDay && nextDay.opening && isConsecutiveDay(currentDay.date, nextDay.date)) {
+        closingData = nextDay.opening.counters;
+        closingType = "finalized";
+        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
+      } else if (currentDay.closing) {
+        closingData = currentDay.closing.counters;
+        closingType = "temporary";
+        closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
+      } else if (nextDay && !isConsecutiveDay(currentDay.date, nextDay.date)) {
+        closingType = "none";
+        const d = parseDateStr(currentDay.date);
+        d.setDate(d.getDate() + 1);
+        const nextTargetStr = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        closingTimeLabel = `Missing Next Day (${nextTargetStr})`;
+      }
+
+      return {
+        date: currentDay.date,
+        opening: currentDay.opening,
+        closingCounters: closingData,
+        closingType: closingType,
+        closingTimeLabel: closingTimeLabel
+      };
+    }
+
     async function refreshDayList() {
       allDayRecords = await getAllDayRecords();
       allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
@@ -1426,26 +1464,6 @@
       renderSalesDesk();
     }
 
-    function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
-      const res = { qty: 0, categories: {} };
-      if (!mRec) return res;
-
-      const addRec = (subDict) => {
-        const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
-        if (item) {
-          res.qty += Number(item.qty) || 0;
-          Object.keys(item.categories || {}).forEach(k => {
-            res.categories[k] = (res.categories[k] || 0) + (Number(item.categories[k]) || 0);
-          });
-        }
-      };
-
-      addRec(mRec.receipts);
-      addRec(mRec.gep_receipts);
-      addRec(mRec.tep_receipts);
-      return res;
-    }
-
     function renderTallyDashboard() {
       const selectEl = document.getElementById("tallyDateSelect");
       if (!selectEl) return;
@@ -1458,38 +1476,42 @@
       const hasOpening = !!resolved.opening;
       const hasClosing = resolved.closingType !== "none";
 
-      document.getElementById("tallyOpeningDateSub").textContent = hasOpening ? `${resolved.opening.time || 'Morning Dump'}` : "Not Recorded";
+      const openSubEl = document.getElementById("tallyOpeningDateSub");
+      if (openSubEl) openSubEl.textContent = hasOpening ? `${resolved.opening.time || 'Morning Dump'}` : "Not Recorded";
 
       const badge = document.getElementById("tallyClosingStatusBadge");
       const closingAccent = document.getElementById("tallyClosingAccent");
       const closingTitle = document.getElementById("tallyClosingTitle");
+      const closeSubEl = document.getElementById("tallyClosingDateSub");
 
       if (hasClosing) {
-        badge.classList.remove("hidden");
+        if (badge) badge.classList.remove("hidden");
         if (resolved.closingType === "temporary") {
-          badge.textContent = "Temporary";
-          badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-100 text-amber-800";
-          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
-          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
+          if (badge) { badge.textContent = "Temporary"; badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-100 text-amber-800"; }
+          if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
+          if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
         } else {
-          badge.textContent = "Finalized";
-          badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800";
-          closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
-          closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
+          if (badge) { badge.textContent = "Finalized"; badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800"; }
+          if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
+          if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
         }
-        document.getElementById("tallyClosingDateSub").textContent = resolved.closingTimeLabel;
+        if (closeSubEl) closeSubEl.textContent = resolved.closingTimeLabel;
       } else {
-        badge.classList.add("hidden");
-        closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
-        closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
-        document.getElementById("tallyClosingDateSub").textContent = resolved.closingTimeLabel || "Pending (Upload next morning)";
+        if (badge) badge.classList.add("hidden");
+        if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
+        if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
+        if (closeSubEl) closeSubEl.textContent = resolved.closingTimeLabel || "Pending (Upload next morning)";
       }
 
-      const showGross = document.getElementById("chkGrossWeight").checked;
-      const showVal = document.getElementById("chkPreTax").checked;
+      const chkGross = document.getElementById("chkGrossWeight");
+      const chkPre = document.getElementById("chkPreTax");
+      const showGross = chkGross ? chkGross.checked : false;
+      const showVal = chkPre ? chkPre.checked : false;
 
-      document.getElementById("tallyOpenExtra").classList.toggle("hidden", !showGross && !showVal);
-      document.getElementById("tallyCloseExtra").classList.toggle("hidden", !showGross && !showVal);
+      const openExtraEl = document.getElementById("tallyOpenExtra");
+      const closeExtraEl = document.getElementById("tallyCloseExtra");
+      if (openExtraEl) openExtraEl.classList.toggle("hidden", !showGross && !showVal);
+      if (closeExtraEl) closeExtraEl.classList.toggle("hidden", !showGross && !showVal);
 
       const openData = (hasOpening && resolved.opening.counters && resolved.opening.counters[currentTallyCounter]) 
         ? resolved.opening.counters[currentTallyCounter] : { qty: 0, gross: 0, value: 0, categories: {} };
@@ -1505,28 +1527,42 @@
 
       const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
 
-      document.getElementById("tallyOpenQty").textContent = hasOpening ? openData.qty.toLocaleString() : "—";
-      document.getElementById("tallyOpenGross").textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
-      document.getElementById("tallyOpenVal").textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
+      const openQtyEl = document.getElementById("tallyOpenQty");
+      const openGrossEl = document.getElementById("tallyOpenGross");
+      const openValEl = document.getElementById("tallyOpenVal");
+      if (openQtyEl) openQtyEl.textContent = hasOpening ? openData.qty.toLocaleString() : "—";
+      if (openGrossEl) openGrossEl.textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
+      if (openValEl) openValEl.textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
 
-      document.getElementById("tallyTransQty").textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
-      document.getElementById("tallyTransQty").className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
-      document.getElementById("txRec").textContent = `+${recDate.qty || 0}`;
-      document.getElementById("txGrn").textContent = `+${grnDate.qty || 0}`;
-      document.getElementById("txIss").textContent = `-${issDate.qty || 0}`;
-      document.getElementById("txSold").textContent = `-${saleDate.qty || 0}`;
+      const transQtyEl = document.getElementById("tallyTransQty");
+      if (transQtyEl) {
+        transQtyEl.textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
+        transQtyEl.className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
+      }
+      const txRecEl = document.getElementById("txRec");
+      const txGrnEl = document.getElementById("txGrn");
+      const txIssEl = document.getElementById("txIss");
+      const txSoldEl = document.getElementById("txSold");
+      if (txRecEl) txRecEl.textContent = `+${recDate.qty || 0}`;
+      if (txGrnEl) txGrnEl.textContent = `+${grnDate.qty || 0}`;
+      if (txIssEl) txIssEl.textContent = `-${issDate.qty || 0}`;
+      if (txSoldEl) txSoldEl.textContent = `-${saleDate.qty || 0}`;
 
+      const closeQtyEl = document.getElementById("tallyCloseQty");
+      const closeGrossEl = document.getElementById("tallyCloseGross");
+      const closeValEl = document.getElementById("tallyCloseVal");
       const closeQtyUnit = document.getElementById("tallyCloseQtyUnit");
+
       if (hasClosing && closeData) {
-        closeQtyUnit.classList.remove("hidden");
-        document.getElementById("tallyCloseQty").textContent = closeData.qty.toLocaleString();
-        document.getElementById("tallyCloseGross").textContent = `${closeData.gross.toFixed(3)} g`;
-        document.getElementById("tallyCloseVal").textContent = `₹${Math.round(closeData.value).toLocaleString()}`;
+        if (closeQtyUnit) closeQtyUnit.classList.remove("hidden");
+        if (closeQtyEl) closeQtyEl.textContent = closeData.qty.toLocaleString();
+        if (closeGrossEl) closeGrossEl.textContent = `${closeData.gross.toFixed(3)} g`;
+        if (closeValEl) closeValEl.textContent = `₹${Math.round(closeData.value).toLocaleString()}`;
       } else {
-        closeQtyUnit.classList.add("hidden");
-        document.getElementById("tallyCloseQty").textContent = "—";
-        document.getElementById("tallyCloseGross").textContent = "—";
-        document.getElementById("tallyCloseVal").textContent = "—";
+        if (closeQtyUnit) closeQtyUnit.classList.add("hidden");
+        if (closeQtyEl) closeQtyEl.textContent = "—";
+        if (closeGrossEl) closeGrossEl.textContent = "—";
+        if (closeValEl) closeValEl.textContent = "—";
       }
 
       const diffAccent = document.getElementById("tallyDiffAccent");
@@ -1538,30 +1574,27 @@
         const systemClosing = openData.qty + netTransactions;
         const diffQty = closeData.qty - systemClosing;
 
-        diffQtyEl.textContent = diffQty > 0 ? `+${diffQty}` : `${diffQty}`;
+        if (diffQtyEl) diffQtyEl.textContent = diffQty > 0 ? `+${diffQty}` : `${diffQty}`;
         if (diffQty === 0) {
-          diffQtyEl.className = "text-3xl font-extrabold text-emerald-600";
-          diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
-          diffTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
-          diffStatusText.textContent = "Exact Balance (No Variance)";
-          diffStatusText.className = "text-xs font-semibold text-emerald-600 mt-1";
+          if (diffQtyEl) diffQtyEl.className = "text-3xl font-extrabold text-emerald-600";
+          if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
+          if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
+          if (diffStatusText) { diffStatusText.textContent = "Exact Balance (No Variance)"; diffStatusText.className = "text-xs font-semibold text-emerald-600 mt-1"; }
         } else {
-          diffQtyEl.className = "text-3xl font-extrabold text-rose-600";
-          diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-rose-500";
-          diffTitle.className = "text-xs font-bold uppercase tracking-wider text-rose-600";
-          diffStatusText.textContent = diffQty > 0 ? `Excess Physical Stock (+${diffQty} pcs)` : `Shortage in Stock (${diffQty} pcs)`;
-          diffStatusText.className = "text-xs font-semibold text-rose-600 mt-1";
+          if (diffQtyEl) diffQtyEl.className = "text-3xl font-extrabold text-rose-600";
+          if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-rose-500";
+          if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-rose-600";
+          if (diffStatusText) { diffStatusText.textContent = diffQty > 0 ? `Excess Physical Stock (+${diffQty} pcs)` : `Shortage in Stock (${diffQty} pcs)`; diffStatusText.className = "text-xs font-semibold text-rose-600 mt-1"; }
         }
       } else {
-        diffQtyEl.textContent = "—";
-        diffQtyEl.className = "text-3xl font-extrabold text-slate-800";
-        diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
-        diffTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
-        diffStatusText.textContent = "Awaiting Closing Snapshot";
-        diffStatusText.className = "text-xs font-medium text-slate-400 mt-1";
+        if (diffQtyEl) { diffQtyEl.textContent = "—"; diffQtyEl.className = "text-3xl font-extrabold text-slate-800"; }
+        if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
+        if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
+        if (diffStatusText) { diffStatusText.textContent = "Awaiting Closing Snapshot"; diffStatusText.className = "text-xs font-medium text-slate-400 mt-1"; }
       }
 
       const container = document.getElementById("tallyDetailSectionContainer");
+      if (!container) return;
       if (currentTallyCounter === "COIN") {
         renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
       } else {
@@ -1744,12 +1777,18 @@
     }
 
     function resetTallyDashboard() {
-      document.getElementById("tallyCloseQty").textContent = "0";
-      document.getElementById("tallyOpenQty").textContent = "0";
-      document.getElementById("tallyTransQty").textContent = "0";
-      document.getElementById("tallyDiffQty").textContent = "0";
-      document.getElementById("tallyClosingDateSub").textContent = "—";
-      document.getElementById("tallyOpeningDateSub").textContent = "—";
+      const closeEl = document.getElementById("tallyCloseQty");
+      const openEl = document.getElementById("tallyOpenQty");
+      const transEl = document.getElementById("tallyTransQty");
+      const diffEl = document.getElementById("tallyDiffQty");
+      if (closeEl) closeEl.textContent = "0";
+      if (openEl) openEl.textContent = "0";
+      if (transEl) transEl.textContent = "0";
+      if (diffEl) diffEl.textContent = "0";
+      const subClose = document.getElementById("tallyClosingDateSub");
+      const subOpen = document.getElementById("tallyOpeningDateSub");
+      if (subClose) subClose.textContent = "—";
+      if (subOpen) subOpen.textContent = "—";
       const c = document.getElementById("tallyDetailSectionContainer");
       if (c) c.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
     }
@@ -1762,8 +1801,10 @@
       if (!selectEl) return;
       const selectedDate = selectEl.value;
       if (!selectedDate) {
-        document.getElementById("salesSummaryContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
-        document.getElementById("salesProductsContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
+        const sumEl = document.getElementById("salesSummaryContainer");
+        const prodEl = document.getElementById("salesProductsContainer");
+        if (sumEl) sumEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
+        if (prodEl) prodEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
         return;
       }
 
@@ -1776,6 +1817,7 @@
 
     function renderSalesSummaryCards(selectedDate) {
       const container = document.getElementById("salesSummaryContainer");
+      if (!container) return;
       container.innerHTML = "";
 
       const mRec = currentMonthData || {};
@@ -1892,6 +1934,7 @@
 
     function renderSalesProductsDetail(selectedDate) {
       const container = document.getElementById("salesProductsContainer");
+      if (!container) return;
       container.innerHTML = "";
 
       const mRec = currentMonthData || {};
