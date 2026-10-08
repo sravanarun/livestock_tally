@@ -208,7 +208,7 @@
             <select id="salesDateSelect" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm font-medium rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none min-w-[150px]"></select>
           </div>
 
-          <!-- Sales View Mode Switcher (Sub-Tabs) -->
+          <!-- Sub-Tabs Switcher -->
           <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
             <button id="salesSubTabSummary" type="button" class="px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all">
               📊 Counter Sales Summary
@@ -225,15 +225,11 @@
         </div>
       </section>
 
-      <!-- Sub-Tab 1: Counter Sales Summary (Cards Matrix) -->
-      <div id="salesSummaryContainer" class="space-y-6">
-        <!-- Rendered dynamically -->
-      </div>
+      <!-- Sub-Tab 1: Counter Sales Summary -->
+      <div id="salesSummaryContainer" class="space-y-6"></div>
 
-      <!-- Sub-Tab 2: Product Sales Detail (Table Breakdown) -->
-      <div id="salesProductsContainer" class="space-y-6 hidden">
-        <!-- Rendered dynamically -->
-      </div>
+      <!-- Sub-Tab 2: Product Sales Detail -->
+      <div id="salesProductsContainer" class="space-y-6 hidden"></div>
     </div>
 
     <!-- ========================================== -->
@@ -251,6 +247,9 @@
             <div class="flex items-center gap-2">
               <label for="dataCenterMonthSelect" class="text-xs font-semibold text-slate-600">Active Month:</label>
               <select id="dataCenterMonthSelect" class="text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1 font-semibold text-slate-800"></select>
+              <button id="btnArchiveMonth" type="button" class="text-[11px] font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-colors cursor-pointer">
+                🔒 Archive Month
+              </button>
             </div>
           </div>
         </div>
@@ -393,9 +392,7 @@
 
         <p class="text-xs text-slate-500 italic">Enter amounts in Lakhs ₹ (e.g. 92.23 for 92.23 Lakhs):</p>
         
-        <div id="ytdInputsGrid" class="grid grid-cols-2 gap-3 text-xs">
-          <!-- Populated dynamically with pre-filled defaults -->
-        </div>
+        <div id="ytdInputsGrid" class="grid grid-cols-2 gap-3 text-xs"></div>
       </div>
 
       <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
@@ -472,7 +469,6 @@
       });
     }
 
-    // Days storage
     async function saveDayRecord(rec) {
       return new Promise((resolve, reject) => {
         const tx = db.transaction("days", "readwrite");
@@ -506,7 +502,6 @@
       });
     }
 
-    // Monthly storage
     async function saveMonthRecord(rec) {
       return new Promise((resolve, reject) => {
         const tx = db.transaction("monthly_transactions", "readwrite");
@@ -540,7 +535,6 @@
       });
     }
 
-    // YTD Baseline storage
     async function saveYtdBaseline(rec) {
       return new Promise((resolve, reject) => {
         const tx = db.transaction("ytd_baselines", "readwrite");
@@ -576,14 +570,13 @@
     
     let currentTallyCounter = "ALL";
     let currentSalesCounter = "ALL";
-    let activeSalesSubTab = "summary"; // 'summary' or 'products'
+    let activeSalesSubTab = "summary";
 
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
     let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {} };
     let currentYtdBaseline = null;
 
-    // Default prior baseline figures in Lakhs (from your YTD sales workbook reference)
     const defaultYtdPrior = {
       "EARRING": 82.66,
       "CHAIN": 320.34,
@@ -631,7 +624,6 @@
       return null;
     }
 
-    // Strict Resolution Rule: GEP & TEP Bins override all mappings
     function resolveCounter(origGroup, origCat, binCode) {
       const cleanBin = String(binCode || "").trim().toUpperCase();
       if (cleanBin === "GEP") return { counter: "GEP", finalGroup: "GEP", finalCat: "GEP" };
@@ -653,7 +645,6 @@
       return { counter, finalGroup, finalCat };
     }
 
-    // --- Dynamic Raw Item Aggregation ---
     function computeAggregatesFromItems(rawItems) {
       const counterAggregates = {};
       availableCounters.forEach(c => {
@@ -694,7 +685,6 @@
         counterAggregates[counter].value += val;
         counterAggregates[counter].categories[categoryDisplayKey] = (counterAggregates[counter].categories[categoryDisplayKey] || 0) + qty;
 
-        // In ALL Counter
         counterAggregates["ALL"].qty += qty;
         counterAggregates["ALL"].gross += gross;
         counterAggregates["ALL"].value += val;
@@ -711,25 +701,27 @@
       return counterAggregates;
     }
 
-    // --- Initialize App ---
+    // --- DOMContentLoaded Initialization ---
     window.addEventListener("DOMContentLoaded", async () => {
-      if (navigator.storage && navigator.storage.persist) {
-        navigator.storage.persist();
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist();
+        }
+
+        await openDatabase();
+        await loadMappingMaster();
+        await refreshMonthDropdown();
+        await refreshDayList();
+        await initYtdBaseline();
+
+        setupNavigationHandlers();
+        setupEventListeners();
+      } catch (err) {
+        console.error("Initialization error:", err);
       }
-
-      await openDatabase();
-      await loadMappingMaster();
-      await refreshMonthDropdown();
-      await refreshDayList();
-      await initYtdBaseline();
-
-      setupNavigationHandlers();
-      setupEventListeners();
     });
 
-    // --- Dynamic Mapping File Loader ---
     async function loadMappingMaster() {
-      const badgeTally = document.getElementById("mapBadge");
       const badgeData = document.getElementById("dataCenterMapBadge");
       try {
         const res = await fetch("Stock_related_map.xlsx");
@@ -772,15 +764,16 @@
         renderTallyCounterButtons();
         renderSalesCounterButtons();
 
-        const badgeHtml = "Map Active";
-        badgeTally.textContent = badgeHtml;
-        badgeTally.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800";
-        badgeData.textContent = badgeHtml;
-        badgeData.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800";
+        if (badgeData) {
+          badgeData.textContent = "Map Active";
+          badgeData.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800";
+        }
       } catch (err) {
         console.warn("Map load warning:", err);
-        badgeTally.textContent = "Map Missing";
-        badgeTally.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-rose-100 text-rose-800";
+        if (badgeData) {
+          badgeData.textContent = "Map Missing";
+          badgeData.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-rose-100 text-rose-800";
+        }
         renderTallyCounterButtons();
         renderSalesCounterButtons();
       }
@@ -788,6 +781,7 @@
 
     function renderTallyCounterButtons() {
       const container = document.getElementById("tallyCounterButtons");
+      if (!container) return;
       container.innerHTML = "";
       availableCounters.forEach(cnt => {
         const btn = document.createElement("button");
@@ -808,6 +802,7 @@
 
     function renderSalesCounterButtons() {
       const container = document.getElementById("salesCounterButtons");
+      if (!container) return;
       container.innerHTML = "";
       availableCounters.forEach(cnt => {
         const btn = document.createElement("button");
@@ -826,7 +821,6 @@
       });
     }
 
-    // --- NAVIGATION CONTROLLER ---
     function setupNavigationHandlers() {
       const navBtnTally = document.getElementById("navBtnTally");
       const navBtnSales = document.getElementById("navBtnSales");
@@ -853,7 +847,6 @@
       navBtnSales.addEventListener("click", () => switchView(navBtnSales, viewSalesDesk));
       navBtnData.addEventListener("click", () => switchView(navBtnData, viewDataCenter));
 
-      // Sales Sub-Tabs (Summary Cards vs Product Details)
       const salesSubTabSummary = document.getElementById("salesSubTabSummary");
       const salesSubTabProducts = document.getElementById("salesSubTabProducts");
       const salesSummaryContainer = document.getElementById("salesSummaryContainer");
@@ -878,7 +871,6 @@
       });
     }
 
-    // --- YTD Prior Baseline Setup Controller ---
     async function initYtdBaseline() {
       currentYtdBaseline = await getYtdBaseline(currentActiveMonth);
       if (!currentYtdBaseline) {
@@ -890,6 +882,7 @@
 
     function renderYtdInputsGrid() {
       const grid = document.getElementById("ytdInputsGrid");
+      if (!grid) return;
       grid.innerHTML = "";
       const baselines = (currentYtdBaseline && currentYtdBaseline.baselines) ? currentYtdBaseline.baselines : defaultYtdPrior;
 
@@ -906,7 +899,6 @@
       });
     }
 
-    // --- Parse Helper for Row 2 Headers ---
     function parseReportWithHeaderAtRow2(workbook) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -930,7 +922,7 @@
       return null;
     }
 
-    // --- File Parser 1: Daily Live Stock Dump ---
+    // --- File Parsers ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -975,7 +967,9 @@
           await saveDayRecord(dayRecord);
           await refreshDayList();
           document.getElementById("tallyDateSelect").value = fileDate;
+          document.getElementById("salesDateSelect").value = fileDate;
           renderTallyDashboard();
+          renderSalesDesk();
           document.getElementById("liveStatus").textContent = `Loaded ${fileDate}`;
           document.getElementById("liveStatus").className = "text-[10px] text-emerald-600 font-bold";
         } catch (err) {
@@ -986,7 +980,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- File Parser 2: Sales Report POS (Includes Product-Level Grain) ---
     async function processSalesFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -996,9 +989,9 @@
           if (rows.length === 0) return alert("Sales report is empty.");
 
           let detectedMonth = null;
-          const salesByDate = {};       // date -> counter -> { qty, value, weight }
-          const salesItemsByDate = {};  // date -> counter -> product -> { soldQty, grnQty, weight, value }
-          const grnByDate = {};         // date -> counter -> { qty, value, weight }
+          const salesByDate = {};
+          const salesItemsByDate = {};
+          const grnByDate = {};
 
           rows.forEach(r => {
             const loc = String(r["Location Code"] || "").trim().toUpperCase();
@@ -1028,7 +1021,6 @@
               else if (setChar) prodKey = `Set ${setChar}`;
             }
 
-            // Initialize structures
             if (!salesByDate[dateStr]) salesByDate[dateStr] = {};
             if (!salesByDate[dateStr][counter]) salesByDate[dateStr][counter] = { qty: 0, value: 0, weight: 0 };
             if (!salesByDate[dateStr]["STORE"]) salesByDate[dateStr]["STORE"] = { qty: 0, value: 0, weight: 0 };
@@ -1040,7 +1032,6 @@
             }
 
             if (qty > 0) {
-              // Billed Sales
               salesByDate[dateStr][counter].qty += qty;
               salesByDate[dateStr][counter].value += val;
               salesByDate[dateStr][counter].weight += wt;
@@ -1053,7 +1044,6 @@
               salesItemsByDate[dateStr][counter][prodKey].weight += wt;
               salesItemsByDate[dateStr][counter][prodKey].value += val;
             } else if (qty < 0) {
-              // Customer Return (GRN)
               const grnQty = Math.abs(qty);
               if (!grnByDate[dateStr]) grnByDate[dateStr] = {};
               if (!grnByDate[dateStr][counter]) grnByDate[dateStr][counter] = { qty: 0, value: 0, weight: 0 };
@@ -1091,7 +1081,7 @@
           await refreshMonthDropdown();
           renderTallyDashboard();
           renderSalesDesk();
-          alert(`Successfully updated Sales and GRN for ${detectedMonth}!`);
+          alert(`Successfully updated Sales & GRN for ${detectedMonth}!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Sales Report.");
@@ -1100,7 +1090,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- File Parser 3: GHS / Installment Due Report ---
     async function processGhsFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -1108,7 +1097,6 @@
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
           const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
           
-          // Header row is at index 4 (Row 5)
           let headerIdx = -1;
           for (let i = 0; i < Math.min(10, rows.length); i++) {
             if (rows[i] && rows[i].some(cell => String(cell).toLowerCase().includes("dateof enrolment") || String(cell).toLowerCase().includes("ghsaccount"))) {
@@ -1127,7 +1115,7 @@
           }
 
           let detectedMonth = null;
-          const ghsByDate = {}; // date -> { count, value }
+          const ghsByDate = {};
 
           for (let r = headerIdx + 1; r < rows.length; r++) {
             const row = rows[r];
@@ -1159,7 +1147,7 @@
           currentMonthData = mRec;
           await refreshMonthDropdown();
           renderSalesDesk();
-          alert(`Successfully updated GHS & GGS schemes for ${detectedMonth}! (${Object.keys(ghsByDate).length} enrollment dates recorded)`);
+          alert(`Successfully updated GHS & GGS schemes for ${detectedMonth}!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing GHS report: " + err.message);
@@ -1168,7 +1156,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- File Parser 4: STM Receipts ---
     async function processReceiptFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -1226,7 +1213,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- File Parser 5: Dedicated GEP / TEP Receipts ---
     async function processGepOrTepReceiptFile(file, counterKey) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -1270,7 +1256,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // --- File Parser 6: Stock Issues ---
     async function processIssueFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -1368,35 +1353,31 @@
 
     async function refreshMonthDropdown() {
       const records = await getAllMonthRecords();
-      const selTally = document.getElementById("monthSelect");
       const selData = document.getElementById("dataCenterMonthSelect");
 
-      const buildOptions = (sel) => {
-        sel.innerHTML = "";
+      if (selData) {
+        selData.innerHTML = "";
         if (records.length === 0) {
-          sel.innerHTML = `<option value="2026-10">2026-10 (Active)</option>`;
+          selData.innerHTML = `<option value="2026-10">2026-10 (Active)</option>`;
         } else {
           records.sort((a,b) => b.month.localeCompare(a.month));
           records.forEach(r => {
             const opt = document.createElement("option");
             opt.value = r.month;
             opt.textContent = `${r.month} ${r.isArchived ? '(Archived)' : '(Active)'}`;
-            sel.appendChild(opt);
+            selData.appendChild(opt);
           });
-          sel.value = records.some(r => r.month === currentActiveMonth) ? currentActiveMonth : records[0].month;
+          selData.value = records.some(r => r.month === currentActiveMonth) ? currentActiveMonth : records[0].month;
         }
-      };
+      }
 
-      buildOptions(selTally);
-      buildOptions(selData);
-
-      currentActiveMonth = selTally.value || "2026-10";
+      currentActiveMonth = selData ? selData.value : "2026-10";
       currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
         month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}
       };
 
       const btn = document.getElementById("btnArchiveMonth");
-      btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
+      if (btn) btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
 
       updateUploadCardsStatus();
     }
@@ -1405,7 +1386,6 @@
       allDayRecords = await getAllDayRecords();
       allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
 
-      // Auto-recalculate past uploads if raw items exist
       for (let day of allDayRecords) {
         let changed = false;
         if (day.opening && day.opening.rawItems) {
@@ -1423,6 +1403,7 @@
       const selSales = document.getElementById("salesDateSelect");
 
       const syncSelect = (sel) => {
+        if (!sel) return;
         const cur = sel.value;
         sel.innerHTML = "";
         if (allDayRecords.length === 0) {
@@ -1445,43 +1426,6 @@
       renderSalesDesk();
     }
 
-    // Dynamic Closing Resolver with Consecutive Day Validation
-    function getResolvedDayStock(selectedDate) {
-      const idx = allDayRecords.findIndex(d => d.date === selectedDate);
-      if (idx === -1) return null;
-
-      const currentDay = allDayRecords[idx];
-      const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
-
-      let closingData = null;
-      let closingType = "none";
-      let closingTimeLabel = "";
-
-      if (nextDay && nextDay.opening && isConsecutiveDay(currentDay.date, nextDay.date)) {
-        closingData = nextDay.opening.counters;
-        closingType = "finalized";
-        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
-      } else if (currentDay.closing) {
-        closingData = currentDay.closing.counters;
-        closingType = "temporary";
-        closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
-      } else if (nextDay && !isConsecutiveDay(currentDay.date, nextDay.date)) {
-        closingType = "none";
-        const d = parseDateStr(currentDay.date);
-        d.setDate(d.getDate() + 1);
-        const nextTargetStr = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
-        closingTimeLabel = `Missing Next Day (${nextTargetStr})`;
-      }
-
-      return {
-        date: currentDay.date,
-        opening: currentDay.opening,
-        closingCounters: closingData,
-        closingType: closingType,
-        closingTimeLabel: closingTimeLabel
-      };
-    }
-
     function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
       const res = { qty: 0, categories: {} };
       if (!mRec) return res;
@@ -1502,11 +1446,10 @@
       return res;
     }
 
-    // ========================================================
-    // TAB 1 RENDERER: ⚖️ STOCK TALLY DESK
-    // ========================================================
     function renderTallyDashboard() {
-      const selectedDate = document.getElementById("tallyDateSelect").value;
+      const selectEl = document.getElementById("tallyDateSelect");
+      if (!selectEl) return;
+      const selectedDate = selectEl.value;
       if (!selectedDate || allDayRecords.length === 0) return resetTallyDashboard();
 
       const resolved = getResolvedDayStock(selectedDate);
@@ -1562,12 +1505,10 @@
 
       const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
 
-      // Card 1: Opening
       document.getElementById("tallyOpenQty").textContent = hasOpening ? openData.qty.toLocaleString() : "—";
       document.getElementById("tallyOpenGross").textContent = hasOpening ? `${openData.gross.toFixed(3)} g` : "—";
       document.getElementById("tallyOpenVal").textContent = hasOpening ? `₹${Math.round(openData.value).toLocaleString()}` : "—";
 
-      // Card 2: Transactions
       document.getElementById("tallyTransQty").textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
       document.getElementById("tallyTransQty").className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
       document.getElementById("txRec").textContent = `+${recDate.qty || 0}`;
@@ -1575,7 +1516,6 @@
       document.getElementById("txIss").textContent = `-${issDate.qty || 0}`;
       document.getElementById("txSold").textContent = `-${saleDate.qty || 0}`;
 
-      // Card 3: Closing (Live Stock Physical)
       const closeQtyUnit = document.getElementById("tallyCloseQtyUnit");
       if (hasClosing && closeData) {
         closeQtyUnit.classList.remove("hidden");
@@ -1589,7 +1529,6 @@
         document.getElementById("tallyCloseVal").textContent = "—";
       }
 
-      // Card 4: Difference (Closing - Expected System Closing)
       const diffAccent = document.getElementById("tallyDiffAccent");
       const diffTitle = document.getElementById("tallyDiffTitle");
       const diffQtyEl = document.getElementById("tallyDiffQty");
@@ -1622,7 +1561,6 @@
         diffStatusText.className = "text-xs font-medium text-slate-400 mt-1";
       }
 
-      // Render Single Closing Table Section
       const container = document.getElementById("tallyDetailSectionContainer");
       if (currentTallyCounter === "COIN") {
         renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
@@ -1812,14 +1750,17 @@
       document.getElementById("tallyDiffQty").textContent = "0";
       document.getElementById("tallyClosingDateSub").textContent = "—";
       document.getElementById("tallyOpeningDateSub").textContent = "—";
-      document.getElementById("tallyDetailSectionContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
+      const c = document.getElementById("tallyDetailSectionContainer");
+      if (c) c.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
     }
 
     // ========================================================
     // TAB 2 RENDERER: 📈 COUNTER SALES & SCHEMES DESK
     // ========================================================
     function renderSalesDesk() {
-      const selectedDate = document.getElementById("salesDateSelect").value;
+      const selectEl = document.getElementById("salesDateSelect");
+      if (!selectEl) return;
+      const selectedDate = selectEl.value;
       if (!selectedDate) {
         document.getElementById("salesSummaryContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
         document.getElementById("salesProductsContainer").innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
@@ -1833,7 +1774,6 @@
       }
     }
 
-    // Sub-Tab 1: Counter Sales Summary Matrix (Excel DISPLAY format)
     function renderSalesSummaryCards(selectedDate) {
       const container = document.getElementById("salesSummaryContainer");
       container.innerHTML = "";
@@ -1843,20 +1783,16 @@
       const ghsData = mRec.ghs || {};
       const baselineMap = (currentYtdBaseline && currentYtdBaseline.baselines) ? currentYtdBaseline.baselines : defaultYtdPrior;
 
-      // Extract all recorded dates in current month up to selectedDate
       const selD = parseDateStr(selectedDate);
       const mtdDates = Object.keys(salesData).filter(dStr => {
         const d = parseDateStr(dStr);
         return d.getMonth() === selD.getMonth() && d.getFullYear() === selD.getFullYear() && d <= selD;
       });
 
-      // Helper to calculate DAY, MTD, YTD in Lakhs
       function getMetricsForCounter(cnt) {
-        // DAY
         const dayItem = (salesData[selectedDate] && salesData[selectedDate][cnt]) ? salesData[selectedDate][cnt] : { value: 0 };
         const dayLakhs = (dayItem.value || 0) / 100000;
 
-        // MTD
         let mtdVal = 0;
         mtdDates.forEach(dStr => {
           if (salesData[dStr] && salesData[dStr][cnt]) {
@@ -1865,17 +1801,14 @@
         });
         const mtdLakhs = mtdVal / 100000;
 
-        // YTD = Prior Baseline + MTD
         const priorLakhs = Number(baselineMap[cnt] !== undefined ? baselineMap[cnt] : (defaultYtdPrior[cnt] || 0));
         const ytdLakhs = priorLakhs + mtdLakhs;
 
         return { dayLakhs, mtdLakhs, ytdLakhs };
       }
 
-      // Store Total Metrics
       const storeMetrics = getMetricsForCounter("STORE");
 
-      // GHS & GGS Metrics (Store Level)
       const dayGhs = ghsData[selectedDate] || { count: 0, value: 0 };
       let mtdGhsCount = 0;
       let mtdGgsVal = 0;
@@ -1889,7 +1822,6 @@
       const dayGgsLakhs = (dayGhs.value || 0) / 100000;
       const mtdGgsLakhs = mtdGgsVal / 100000;
 
-      // Which counters to display
       const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
 
       const cardsGrid = document.createElement("div");
@@ -1902,13 +1834,11 @@
         card.className = "bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between";
         card.innerHTML = `
           <div>
-            <!-- Card Header -->
             <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
               <span class="font-bold text-xs tracking-wider uppercase">${cnt} COUNTER</span>
               <span class="text-[10px] text-amber-400 font-semibold">${selectedDate}</span>
             </div>
 
-            <!-- Table of Comparison -->
             <div class="p-4">
               <table class="w-full text-xs">
                 <thead>
@@ -1960,7 +1890,6 @@
       container.appendChild(cardsGrid);
     }
 
-    // Sub-Tab 2: Product Sales Detail Breakdown (Excel Sheet1 format)
     function renderSalesProductsDetail(selectedDate) {
       const container = document.getElementById("salesProductsContainer");
       container.innerHTML = "";
@@ -2020,7 +1949,6 @@
             `;
           });
 
-          // Summary Total Row
           tbodyHtml += `
             <tr class="bg-slate-50 font-bold border-t-2 border-slate-200 text-slate-900">
               <td class="px-4 py-2.5">Total ${cnt}</td>
@@ -2061,7 +1989,6 @@
         detailGrid.appendChild(section);
       });
 
-      // Top Action Bar with Excel Copy
       const topBar = document.createElement("div");
       topBar.className = "flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs";
       topBar.innerHTML = `
@@ -2075,7 +2002,7 @@
       container.appendChild(detailGrid);
     }
 
-    // --- Excel Clipboard Formatter (Direct Paste into Excel Grid) ---
+    // --- Excel Copy Handlers ---
     window.copyTableToExcel = async function(tableId, dateStr, counterName) {
       const table = document.getElementById(tableId);
       if (!table) return alert("Table not found.");
@@ -2149,7 +2076,6 @@
       }
     };
 
-    // --- Manage Uploads Handlers ---
     function renderManageList() {
       renderManageDaysList();
       renderManageMonthsList();
@@ -2157,6 +2083,7 @@
 
     function renderManageDaysList() {
       const container = document.getElementById("manageListContainerDays");
+      if (!container) return;
       container.innerHTML = "";
 
       if (!allDayRecords || allDayRecords.length === 0) {
@@ -2206,6 +2133,7 @@
 
     async function renderManageMonthsList() {
       const container = document.getElementById("manageListContainerMonths");
+      if (!container) return;
       container.innerHTML = "";
 
       const records = await getAllMonthRecords();
@@ -2283,7 +2211,6 @@
       });
     }
 
-    // --- Deletion Actions ---
     window.handleClearClosing = async function(dateStr) {
       if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
@@ -2332,30 +2259,29 @@
       renderSalesDesk();
     };
 
-    // --- Event Listeners Setup ---
     function setupEventListeners() {
-      // Manage Modal Tabs
       const tabBtnDays = document.getElementById("tabBtnDays");
       const tabBtnMonths = document.getElementById("tabBtnMonths");
       const containerDays = document.getElementById("manageListContainerDays");
       const containerMonths = document.getElementById("manageListContainerMonths");
 
-      tabBtnDays.addEventListener("click", () => {
-        tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
-        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
-        containerDays.classList.remove("hidden");
-        containerMonths.classList.add("hidden");
-      });
+      if (tabBtnDays && tabBtnMonths) {
+        tabBtnDays.addEventListener("click", () => {
+          tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+          tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+          containerDays.classList.remove("hidden");
+          containerMonths.classList.add("hidden");
+        });
 
-      tabBtnMonths.addEventListener("click", () => {
-        tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
-        tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
-        containerMonths.classList.remove("hidden");
-        containerDays.classList.add("hidden");
-        renderManageMonthsList();
-      });
+        tabBtnMonths.addEventListener("click", () => {
+          tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+          tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+          containerMonths.classList.remove("hidden");
+          containerDays.classList.add("hidden");
+          renderManageMonthsList();
+        });
+      }
 
-      // Data Center Upload Drops & Browses
       const bindDrop = (dropId, fileId, handler) => {
         const drop = document.getElementById(dropId);
         const file = document.getElementById(fileId);
@@ -2374,135 +2300,149 @@
       bindDrop("dropAreaTepReceipt", "fileTepReceipt", (f) => processGepOrTepReceiptFile(f, "TEP"));
       bindDrop("dropAreaGhs", "fileGhs", processGhsFile);
 
-      // Date selects sync
-      document.getElementById("tallyDateSelect").addEventListener("change", (e) => {
-        document.getElementById("salesDateSelect").value = e.target.value;
-        renderTallyDashboard();
-        renderSalesDesk();
-      });
-      document.getElementById("salesDateSelect").addEventListener("change", (e) => {
-        document.getElementById("tallyDateSelect").value = e.target.value;
-        renderTallyDashboard();
-        renderSalesDesk();
-      });
+      const selTally = document.getElementById("tallyDateSelect");
+      const selSales = document.getElementById("salesDateSelect");
 
-      // Checkboxes
-      document.getElementById("chkGrossWeight").addEventListener("change", renderTallyDashboard);
-      document.getElementById("chkPreTax").addEventListener("change", renderTallyDashboard);
-
-      // Month selects sync
-      const onMonthChange = async (e) => {
-        currentActiveMonth = e.target.value;
-        currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
-          month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}
-        };
-        document.getElementById("monthSelect").value = currentActiveMonth;
-        document.getElementById("dataCenterMonthSelect").value = currentActiveMonth;
-        document.getElementById("ytdTargetMonth").value = currentActiveMonth;
-        await initYtdBaseline();
-        updateUploadCardsStatus();
-        renderTallyDashboard();
-        renderSalesDesk();
-      };
-      document.getElementById("monthSelect").addEventListener("change", onMonthChange);
-      document.getElementById("dataCenterMonthSelect").addEventListener("change", onMonthChange);
-
-      document.getElementById("btnArchiveMonth").addEventListener("click", async () => {
-        if (!currentMonthData) return;
-        currentMonthData.isArchived = !currentMonthData.isArchived;
-        await saveMonthRecord(currentMonthData);
-        await refreshMonthDropdown();
-        alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
-      });
-
-      // Modals
-      document.getElementById("btnOpenManage").addEventListener("click", () => {
-        renderManageList();
-        document.getElementById("manageModal").classList.remove("hidden");
-      });
-      document.getElementById("btnCloseManage").addEventListener("click", () => {
-        document.getElementById("manageModal").classList.add("hidden");
-      });
-
-      document.getElementById("btnOpenYtdModal").addEventListener("click", () => {
-        document.getElementById("ytdModal").classList.remove("hidden");
-      });
-      document.getElementById("btnCloseYtdModal").addEventListener("click", () => {
-        document.getElementById("ytdModal").classList.add("hidden");
-      });
-
-      // Save YTD Baseline Button
-      document.getElementById("btnSaveYtdBaseline").addEventListener("click", async () => {
-        const targetMonth = document.getElementById("ytdTargetMonth").value.trim() || currentActiveMonth;
-        const inputs = document.querySelectorAll("[data-ytd-key]");
-        const baselines = {};
-        inputs.forEach(inp => {
-          baselines[inp.getAttribute("data-ytd-key")] = Number(inp.value) || 0;
+      if (selTally) {
+        selTally.addEventListener("change", (e) => {
+          if (selSales) selSales.value = e.target.value;
+          renderTallyDashboard();
+          renderSalesDesk();
         });
+      }
+      if (selSales) {
+        selSales.addEventListener("change", (e) => {
+          if (selTally) selTally.value = e.target.value;
+          renderTallyDashboard();
+          renderSalesDesk();
+        });
+      }
 
-        currentYtdBaseline = { month: targetMonth, baselines: baselines };
-        await saveYtdBaseline(currentYtdBaseline);
-        document.getElementById("ytdModal").classList.add("hidden");
-        renderSalesDesk();
-        alert(`Successfully saved YTD baseline for ${targetMonth}!`);
-      });
+      const chkGross = document.getElementById("chkGrossWeight");
+      const chkPre = document.getElementById("chkPreTax");
+      if (chkGross) chkGross.addEventListener("change", renderTallyDashboard);
+      if (chkPre) chkPre.addEventListener("change", renderTallyDashboard);
 
-      // Clear all
-      document.getElementById("btnClearAll").addEventListener("click", async () => {
-        if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
-          await clearAllData();
-          await refreshDayList();
-          await refreshMonthDropdown();
+      const selDataMonth = document.getElementById("dataCenterMonthSelect");
+      if (selDataMonth) {
+        selDataMonth.addEventListener("change", async (e) => {
+          currentActiveMonth = e.target.value;
+          currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
+            month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}
+          };
+          const ytdInp = document.getElementById("ytdTargetMonth");
+          if (ytdInp) ytdInp.value = currentActiveMonth;
           await initYtdBaseline();
-          renderManageList();
-          document.getElementById("manageModal").classList.add("hidden");
-          alert("All historical records cleared.");
-        }
-      });
+          updateUploadCardsStatus();
+          renderTallyDashboard();
+          renderSalesDesk();
+        });
+      }
 
-      // Backup Download
-      document.getElementById("btnBackup").addEventListener("click", async () => {
-        const days = await getAllDayRecords();
-        const months = await getAllMonthRecords();
-        const ytd = currentYtdBaseline;
-        if (days.length === 0 && months.length === 0) return alert("No history to backup.");
-        const exportData = { days, months, ytd, exportDate: new Date().toISOString() };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-        const dl = document.createElement("a");
-        dl.setAttribute("href", dataStr);
-        dl.setAttribute("download", `store_suite_backup_${new Date().toISOString().slice(0, 10)}.json`);
-        document.body.appendChild(dl);
-        dl.click();
-        dl.remove();
-      });
+      const btnArchive = document.getElementById("btnArchiveMonth");
+      if (btnArchive) {
+        btnArchive.addEventListener("click", async () => {
+          if (!currentMonthData) return;
+          currentMonthData.isArchived = !currentMonthData.isArchived;
+          await saveMonthRecord(currentMonthData);
+          await refreshMonthDropdown();
+          alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
+        });
+      }
 
-      // Restore
-      document.getElementById("restoreInput").addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-          try {
-            const parsed = JSON.parse(evt.target.result);
-            if (parsed.days) {
-              for (const item of parsed.days) await saveDayRecord(item);
-            }
-            if (parsed.months) {
-              for (const m of parsed.months) await saveMonthRecord(m);
-            }
-            if (parsed.ytd) {
-              await saveYtdBaseline(parsed.ytd);
-            }
+      const btnOpenManage = document.getElementById("btnOpenManage");
+      const btnCloseManage = document.getElementById("btnCloseManage");
+      const manageModal = document.getElementById("manageModal");
+
+      if (btnOpenManage) btnOpenManage.addEventListener("click", () => { renderManageList(); manageModal.classList.remove("hidden"); });
+      if (btnCloseManage) btnCloseManage.addEventListener("click", () => manageModal.classList.add("hidden"));
+
+      const btnOpenYtd = document.getElementById("btnOpenYtdModal");
+      const btnCloseYtd = document.getElementById("btnCloseYtdModal");
+      const ytdModal = document.getElementById("ytdModal");
+
+      if (btnOpenYtd) btnOpenYtd.addEventListener("click", () => ytdModal.classList.remove("hidden"));
+      if (btnCloseYtd) btnCloseYtd.addEventListener("click", () => ytdModal.classList.add("hidden"));
+
+      const btnSaveYtd = document.getElementById("btnSaveYtdBaseline");
+      if (btnSaveYtd) {
+        btnSaveYtd.addEventListener("click", async () => {
+          const ytdInp = document.getElementById("ytdTargetMonth");
+          const targetMonth = (ytdInp ? ytdInp.value.trim() : "") || currentActiveMonth;
+          const inputs = document.querySelectorAll("[data-ytd-key]");
+          const baselines = {};
+          inputs.forEach(inp => { baselines[inp.getAttribute("data-ytd-key")] = Number(inp.value) || 0; });
+
+          currentYtdBaseline = { month: targetMonth, baselines: baselines };
+          await saveYtdBaseline(currentYtdBaseline);
+          ytdModal.classList.add("hidden");
+          renderSalesDesk();
+          alert(`Successfully saved YTD baseline for ${targetMonth}!`);
+        });
+      }
+
+      const btnClearAll = document.getElementById("btnClearAll");
+      if (btnClearAll) {
+        btnClearAll.addEventListener("click", async () => {
+          if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
+            await clearAllData();
             await refreshDayList();
             await refreshMonthDropdown();
             await initYtdBaseline();
-            alert("Backup restored successfully!");
-          } catch (err) {
-            alert("Failed to restore backup: " + err.message);
+            renderManageList();
+            manageModal.classList.add("hidden");
+            alert("All historical records cleared.");
           }
-        };
-        reader.readAsText(file);
-      });
+        });
+      }
+
+      const btnBackup = document.getElementById("btnBackup");
+      if (btnBackup) {
+        btnBackup.addEventListener("click", async () => {
+          const days = await getAllDayRecords();
+          const months = await getAllMonthRecords();
+          const ytd = currentYtdBaseline;
+          if (days.length === 0 && months.length === 0) return alert("No history to backup.");
+          const exportData = { days, months, ytd, exportDate: new Date().toISOString() };
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+          const dl = document.createElement("a");
+          dl.setAttribute("href", dataStr);
+          dl.setAttribute("download", `store_suite_backup_${new Date().toISOString().slice(0, 10)}.json`);
+          document.body.appendChild(dl);
+          dl.click();
+          dl.remove();
+        });
+      }
+
+      const restoreInput = document.getElementById("restoreInput");
+      if (restoreInput) {
+        restoreInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            try {
+              const parsed = JSON.parse(evt.target.result);
+              if (parsed.days) {
+                for (const item of parsed.days) await saveDayRecord(item);
+              }
+              if (parsed.months) {
+                for (const m of parsed.months) await saveMonthRecord(m);
+              }
+              if (parsed.ytd) {
+                await saveYtdBaseline(parsed.ytd);
+              }
+              await refreshDayList();
+              await refreshMonthDropdown();
+              await initYtdBaseline();
+              alert("Backup restored successfully!");
+            } catch (err) {
+              alert("Failed to restore backup: " + err.message);
+            }
+          };
+          reader.readAsText(file);
+        });
+      }
     }
   </script>
 </body>
