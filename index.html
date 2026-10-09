@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Store Inventory & Sales Suite</title>
+  <title>Store Operations Suite</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS for parsing XLSX in browser -->
@@ -443,7 +443,7 @@
   <script>
     // --- IndexedDB Configuration ---
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 7;
+    const DB_VERSION = 8;
     let db;
 
     function openDatabase() {
@@ -612,10 +612,17 @@
       return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) === 1;
     }
 
+    // Handles Dates, ISO Strings, and Excel Serial Numeric Dates
     function normalizeDate(raw) {
-      if (!raw) return null;
+      if (raw === undefined || raw === null || raw === "") return null;
       if (raw instanceof Date) {
+        if (isNaN(raw.getTime())) return null;
         return `${String(raw.getDate()).padStart(2, "0")}-${String(raw.getMonth() + 1).padStart(2, "0")}-${raw.getFullYear()}`;
+      }
+      if (typeof raw === "number") {
+        const d = new Date(Math.round((raw - 25569) * 86400 * 1000));
+        if (isNaN(d.getTime())) return null;
+        return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
       }
       const str = String(raw).trim();
       let m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
@@ -706,15 +713,14 @@
     }
 
     // --- DOMContentLoaded Initialization ---
-    // Rule #1: Bind synchronous listeners and UI handlers immediately so buttons never die!
     window.addEventListener("DOMContentLoaded", async () => {
-      // 1. Synchronous setup
+      // 1. Initialize synchronous UI handlers immediately
       renderTallyCounterButtons();
       renderSalesCounterButtons();
       setupNavigationHandlers();
       setupEventListeners();
 
-      // 2. Safe async data hydration
+      // 2. Safe async database hydration
       try {
         if (navigator.storage && navigator.storage.persist) {
           navigator.storage.persist();
@@ -725,7 +731,7 @@
         await initYtdBaseline();
         await refreshDayList();
       } catch (err) {
-        console.error("Initialization warning:", err);
+        console.error("Initialization error:", err);
       }
     });
 
@@ -937,7 +943,7 @@
       return null;
     }
 
-    // --- File Parsers ---
+    // --- File Parser 1: Live Stock ---
     async function processLiveStockFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -997,11 +1003,12 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- File Parser 2: Sales Report POS (CRITICAL: Populates BOTH Sales Desk AND Stock Tally Categories) ---
     async function processSalesFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           if (rows.length === 0) return alert("Sales report is empty.");
 
@@ -1038,45 +1045,75 @@
               else if (setChar) prodKey = `Set ${setChar}`;
             }
 
-            if (!salesByDate[dateStr]) salesByDate[dateStr] = {};
-            if (!salesByDate[dateStr][counter]) salesByDate[dateStr][counter] = { qty: 0, value: 0, weight: 0 };
-            if (!salesByDate[dateStr]["STORE"]) salesByDate[dateStr]["STORE"] = { qty: 0, value: 0, weight: 0 };
+            const allCatKey = (counter === "BANGLE") ? "BANGLES" : prodKey;
 
-            if (!salesItemsByDate[dateStr]) salesItemsByDate[dateStr] = {};
-            if (!salesItemsByDate[dateStr][counter]) salesItemsByDate[dateStr][counter] = {};
-            if (!salesItemsByDate[dateStr][counter][prodKey]) {
-              salesItemsByDate[dateStr][counter][prodKey] = { soldQty: 0, grnQty: 0, weight: 0, value: 0 };
-            }
+            // Initialize data structures for Stock Tally + Sales Matrix
+            const initCounter = (dict, cntKey) => {
+              if (!dict[dateStr]) dict[dateStr] = {};
+              if (!dict[dateStr][cntKey]) dict[dateStr][cntKey] = { qty: 0, value: 0, weight: 0, categories: {} };
+            };
 
             if (qty > 0) {
+              // BILLED SALES
+              initCounter(salesByDate, counter);
+              initCounter(salesByDate, "ALL");
+              initCounter(salesByDate, "STORE");
+
+              // Counter Level
               salesByDate[dateStr][counter].qty += qty;
               salesByDate[dateStr][counter].value += val;
               salesByDate[dateStr][counter].weight += wt;
+              salesByDate[dateStr][counter].categories[prodKey] = (salesByDate[dateStr][counter].categories[prodKey] || 0) + qty;
 
+              // ALL Counter (For Stock Tally Desk)
+              salesByDate[dateStr]["ALL"].qty += qty;
+              salesByDate[dateStr]["ALL"].categories[allCatKey] = (salesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
+
+              // STORE Counter (For Counter Sales Desk)
               salesByDate[dateStr]["STORE"].qty += qty;
               salesByDate[dateStr]["STORE"].value += val;
               salesByDate[dateStr]["STORE"].weight += wt;
 
+              // Product Breakdown Matrix
+              if (!salesItemsByDate[dateStr]) salesItemsByDate[dateStr] = {};
+              if (!salesItemsByDate[dateStr][counter]) salesItemsByDate[dateStr][counter] = {};
+              if (!salesItemsByDate[dateStr][counter][prodKey]) {
+                salesItemsByDate[dateStr][counter][prodKey] = { soldQty: 0, grnQty: 0, weight: 0, value: 0 };
+              }
               salesItemsByDate[dateStr][counter][prodKey].soldQty += qty;
               salesItemsByDate[dateStr][counter][prodKey].weight += wt;
               salesItemsByDate[dateStr][counter][prodKey].value += val;
+
             } else if (qty < 0) {
+              // CUSTOMER RETURNS (GRN)
               const grnQty = Math.abs(qty);
-              if (!grnByDate[dateStr]) grnByDate[dateStr] = {};
-              if (!grnByDate[dateStr][counter]) grnByDate[dateStr][counter] = { qty: 0, value: 0, weight: 0 };
-              if (!grnByDate[dateStr]["STORE"]) grnByDate[dateStr]["STORE"] = { qty: 0, value: 0, weight: 0 };
+              const absVal = Math.abs(val);
+              const absWt = Math.abs(wt);
+
+              initCounter(grnByDate, counter);
+              initCounter(grnByDate, "ALL");
+              initCounter(grnByDate, "STORE");
 
               grnByDate[dateStr][counter].qty += grnQty;
-              grnByDate[dateStr][counter].value += Math.abs(val);
-              grnByDate[dateStr][counter].weight += Math.abs(wt);
+              grnByDate[dateStr][counter].value += absVal;
+              grnByDate[dateStr][counter].weight += absWt;
+              grnByDate[dateStr][counter].categories[prodKey] = (grnByDate[dateStr][counter].categories[prodKey] || 0) + grnQty;
+
+              grnByDate[dateStr]["ALL"].qty += grnQty;
+              grnByDate[dateStr]["ALL"].categories[allCatKey] = (grnByDate[dateStr]["ALL"].categories[allCatKey] || 0) + grnQty;
 
               grnByDate[dateStr]["STORE"].qty += grnQty;
-              grnByDate[dateStr]["STORE"].value += Math.abs(val);
-              grnByDate[dateStr]["STORE"].weight += Math.abs(wt);
+              grnByDate[dateStr]["STORE"].value += absVal;
+              grnByDate[dateStr]["STORE"].weight += absWt;
 
+              if (!salesItemsByDate[dateStr]) salesItemsByDate[dateStr] = {};
+              if (!salesItemsByDate[dateStr][counter]) salesItemsByDate[dateStr][counter] = {};
+              if (!salesItemsByDate[dateStr][counter][prodKey]) {
+                salesItemsByDate[dateStr][counter][prodKey] = { soldQty: 0, grnQty: 0, weight: 0, value: 0 };
+              }
               salesItemsByDate[dateStr][counter][prodKey].grnQty += grnQty;
-              salesItemsByDate[dateStr][counter][prodKey].weight -= Math.abs(wt);
-              salesItemsByDate[dateStr][counter][prodKey].value -= Math.abs(val);
+              salesItemsByDate[dateStr][counter][prodKey].weight -= absWt;
+              salesItemsByDate[dateStr][counter][prodKey].value -= absVal;
             }
           });
 
@@ -1107,11 +1144,12 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- File Parser 3: GHS Report (With Serial Numeric Dates Support) ---
     async function processGhsFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
           
           let headerIdx = -1;
@@ -1136,7 +1174,7 @@
 
           for (let r = headerIdx + 1; r < rows.length; r++) {
             const row = rows[r];
-            if (!row || !row[dateCol]) continue;
+            if (!row || row[dateCol] === undefined || row[dateCol] === null) continue;
 
             const dateStr = normalizeDate(row[dateCol]);
             if (!dateStr) continue;
@@ -1173,11 +1211,12 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- File Parser 4: STM Receipts ---
     async function processReceiptFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           if (rows.length === 0) return alert("Receipt report is empty.");
 
@@ -1230,11 +1269,12 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- File Parser 5: Dedicated GEP / TEP Receipts ---
     async function processGepOrTepReceiptFile(file, counterKey) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           
           let detectedMonth = null;
@@ -1273,11 +1313,12 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // --- File Parser 6: Stock Issues ---
     async function processIssueFile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           if (rows.length === 0) return alert("Issue report is empty.");
 
@@ -1399,760 +1440,7 @@
       updateUploadCardsStatus();
     }
 
-    // Dynamic Closing Resolver with Safe Fallbacks
-    function getResolvedDayStock(selectedDate) {
-      if (!allDayRecords || allDayRecords.length === 0) return null;
-      const idx = allDayRecords.findIndex(d => d.date === selectedDate);
-      if (idx === -1) return null;
-
-      const currentDay = allDayRecords[idx];
-      const nextDay = (idx < allDayRecords.length - 1) ? allDayRecords[idx + 1] : null;
-
-      let closingData = null;
-      let closingType = "none";
-      let closingTimeLabel = "";
-
-      if (nextDay && nextDay.opening && isConsecutiveDay(currentDay.date, nextDay.date)) {
-        closingData = nextDay.opening.counters;
-        closingType = "finalized";
-        closingTimeLabel = `Closed by ${nextDay.date} morning dump (${nextDay.opening.time || ''})`;
-      } else if (currentDay.closing) {
-        closingData = currentDay.closing.counters;
-        closingType = "temporary";
-        closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
-      } else if (nextDay && !isConsecutiveDay(currentDay.date, nextDay.date)) {
-        closingType = "none";
-        const d = parseDateStr(currentDay.date);
-        d.setDate(d.getDate() + 1);
-        const nextTargetStr = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
-        closingTimeLabel = `Missing Next Day (${nextTargetStr})`;
-      }
-
-      return {
-        date: currentDay.date,
-        opening: currentDay.opening,
-        closingCounters: closingData,
-        closingType: closingType,
-        closingTimeLabel: closingTimeLabel
-      };
-    }
-
-    async function refreshDayList() {
-      allDayRecords = await getAllDayRecords();
-      allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
-
-      const selTally = document.getElementById("tallyDateSelect");
-      const selSales = document.getElementById("salesDateSelect");
-
-      const syncSelect = (sel) => {
-        if (!sel) return;
-        const cur = sel.value;
-        sel.innerHTML = "";
-        if (allDayRecords.length === 0) {
-          sel.innerHTML = `<option value="">No snapshots uploaded</option>`;
-        } else {
-          allDayRecords.forEach(rec => {
-            const opt = document.createElement("option");
-            opt.value = rec.date;
-            opt.textContent = rec.date;
-            sel.appendChild(opt);
-          });
-          sel.value = (cur && allDayRecords.some(r => r.date === cur)) ? cur : allDayRecords[allDayRecords.length - 1].date;
-        }
-      };
-
-      syncSelect(selTally);
-      syncSelect(selSales);
-
-      renderTallyDashboard();
-      renderSalesDesk();
-    }
-
-    function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
-      const res = { qty: 0, categories: {} };
-      if (!mRec) return res;
-
-      const addRec = (subDict) => {
-        const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
-        if (item) {
-          res.qty += Number(item.qty) || 0;
-          Object.keys(item.categories || {}).forEach(k => {
-            res.categories[k] = (res.categories[k] || 0) + (Number(item.categories[k]) || 0);
-          });
-        }
-      };
-
-      addRec(mRec.receipts);
-      addRec(mRec.gep_receipts);
-      addRec(mRec.tep_receipts);
-      return res;
-    }
-
-    function renderTallyDashboard() {
-      const selectEl = document.getElementById("tallyDateSelect");
-      if (!selectEl) return;
-      const selectedDate = selectEl.value;
-      if (!selectedDate || allDayRecords.length === 0) return resetTallyDashboard();
-
-      const resolved = getResolvedDayStock(selectedDate);
-      if (!resolved) return resetTallyDashboard();
-
-      const hasOpening = !!resolved.opening;
-      const hasClosing = resolved.closingType !== "none";
-
-      const openSubEl = document.getElementById("tallyOpeningDateSub");
-      if (openSubEl) openSubEl.textContent = hasOpening ? `${resolved.opening.time || 'Morning Dump'}` : "Not Recorded";
-
-      const badge = document.getElementById("tallyClosingStatusBadge");
-      const closingAccent = document.getElementById("tallyClosingAccent");
-      const closingTitle = document.getElementById("tallyClosingTitle");
-      const closeSubEl = document.getElementById("tallyClosingDateSub");
-
-      if (hasClosing) {
-        if (badge) badge.classList.remove("hidden");
-        if (resolved.closingType === "temporary") {
-          if (badge) { badge.textContent = "Temporary"; badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-100 text-amber-800"; }
-          if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-amber-500";
-          if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-amber-600";
-        } else {
-          if (badge) { badge.textContent = "Finalized"; badge.className = "text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800"; }
-          if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
-          if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
-        }
-        if (closeSubEl) closeSubEl.textContent = resolved.closingTimeLabel;
-      } else {
-        if (badge) badge.classList.add("hidden");
-        if (closingAccent) closingAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
-        if (closingTitle) closingTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
-        if (closeSubEl) closeSubEl.textContent = resolved.closingTimeLabel || "Pending (Upload next morning)";
-      }
-
-      const chkGross = document.getElementById("chkGrossWeight");
-      const chkPre = document.getElementById("chkPreTax");
-      const showGross = chkGross ? chkGross.checked : false;
-      const showVal = chkPre ? chkPre.checked : false;
-
-      const openExtraEl = document.getElementById("tallyOpenExtra");
-      const closeExtraEl = document.getElementById("tallyCloseExtra");
-      if (openExtraEl) openExtraEl.classList.toggle("hidden", !showGross && !showVal);
-      if (closeExtraEl) closeExtraEl.classList.toggle("hidden", !showGross && !showVal);
-
-      // Safe Data Extraction
-      let openData = { qty: 0, gross: 0, value: 0, categories: {} };
-      if (hasOpening && resolved.opening) {
-        if (resolved.opening.counters && resolved.opening.counters[currentTallyCounter]) {
-          openData = resolved.opening.counters[currentTallyCounter];
-        } else if (resolved.opening.rawItems) {
-          const fresh = computeAggregatesFromItems(resolved.opening.rawItems);
-          if (fresh[currentTallyCounter]) openData = fresh[currentTallyCounter];
-        }
-      }
-
-      let closeData = null;
-      if (hasClosing && resolved.closingCounters) {
-        closeData = resolved.closingCounters[currentTallyCounter] || null;
-      }
-
-      const mRec = currentMonthData || {};
-      const recDate = getConsolidatedReceipts(mRec, selectedDate, currentTallyCounter);
-      const grnDate = (mRec.grn && mRec.grn[selectedDate] && mRec.grn[selectedDate][currentTallyCounter]) ? mRec.grn[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
-      const issDate = (mRec.issues && mRec.issues[selectedDate] && mRec.issues[selectedDate][currentTallyCounter]) ? mRec.issues[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
-      const saleDate = (mRec.sales && mRec.sales[selectedDate] && mRec.sales[selectedDate][currentTallyCounter]) ? mRec.sales[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
-
-      const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
-
-      const openQtyEl = document.getElementById("tallyOpenQty");
-      const openGrossEl = document.getElementById("tallyOpenGross");
-      const openValEl = document.getElementById("tallyOpenVal");
-      if (openQtyEl) openQtyEl.textContent = hasOpening ? (openData.qty || 0).toLocaleString() : "—";
-      if (openGrossEl) openGrossEl.textContent = hasOpening ? `${(openData.gross || 0).toFixed(3)} g` : "—";
-      if (openValEl) openValEl.textContent = hasOpening ? `₹${Math.round(openData.value || 0).toLocaleString()}` : "—";
-
-      const transQtyEl = document.getElementById("tallyTransQty");
-      if (transQtyEl) {
-        transQtyEl.textContent = netTransactions > 0 ? `+${netTransactions}` : `${netTransactions}`;
-        transQtyEl.className = `text-3xl font-extrabold ${netTransactions > 0 ? 'text-emerald-600' : netTransactions < 0 ? 'text-rose-600' : 'text-slate-900'}`;
-      }
-      const txRecEl = document.getElementById("txRec");
-      const txGrnEl = document.getElementById("txGrn");
-      const txIssEl = document.getElementById("txIss");
-      const txSoldEl = document.getElementById("txSold");
-      if (txRecEl) txRecEl.textContent = `+${recDate.qty || 0}`;
-      if (txGrnEl) txGrnEl.textContent = `+${grnDate.qty || 0}`;
-      if (txIssEl) txIssEl.textContent = `-${issDate.qty || 0}`;
-      if (txSoldEl) txSoldEl.textContent = `-${saleDate.qty || 0}`;
-
-      const closeQtyEl = document.getElementById("tallyCloseQty");
-      const closeGrossEl = document.getElementById("tallyCloseGross");
-      const closeValEl = document.getElementById("tallyCloseVal");
-      const closeQtyUnit = document.getElementById("tallyCloseQtyUnit");
-
-      if (hasClosing && closeData) {
-        if (closeQtyUnit) closeQtyUnit.classList.remove("hidden");
-        if (closeQtyEl) closeQtyEl.textContent = (closeData.qty || 0).toLocaleString();
-        if (closeGrossEl) closeGrossEl.textContent = `${(closeData.gross || 0).toFixed(3)} g`;
-        if (closeValEl) closeValEl.textContent = `₹${Math.round(closeData.value || 0).toLocaleString()}`;
-      } else {
-        if (closeQtyUnit) closeQtyUnit.classList.add("hidden");
-        if (closeQtyEl) closeQtyEl.textContent = "—";
-        if (closeGrossEl) closeGrossEl.textContent = "—";
-        if (closeValEl) closeValEl.textContent = "—";
-      }
-
-      const diffAccent = document.getElementById("tallyDiffAccent");
-      const diffTitle = document.getElementById("tallyDiffTitle");
-      const diffQtyEl = document.getElementById("tallyDiffQty");
-      const diffStatusText = document.getElementById("tallyDiffStatusText");
-
-      if (hasClosing && closeData) {
-        const systemClosing = (openData.qty || 0) + netTransactions;
-        const diffQty = (closeData.qty || 0) - systemClosing;
-
-        if (diffQtyEl) diffQtyEl.textContent = diffQty > 0 ? `+${diffQty}` : `${diffQty}`;
-        if (diffQty === 0) {
-          if (diffQtyEl) diffQtyEl.className = "text-3xl font-extrabold text-emerald-600";
-          if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-emerald-500";
-          if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-emerald-600";
-          if (diffStatusText) { diffStatusText.textContent = "Exact Balance (No Variance)"; diffStatusText.className = "text-xs font-semibold text-emerald-600 mt-1"; }
-        } else {
-          if (diffQtyEl) diffQtyEl.className = "text-3xl font-extrabold text-rose-600";
-          if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-rose-500";
-          if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-rose-600";
-          if (diffStatusText) { diffStatusText.textContent = diffQty > 0 ? `Excess Physical Stock (+${diffQty} pcs)` : `Shortage in Stock (${diffQty} pcs)`; diffStatusText.className = "text-xs font-semibold text-rose-600 mt-1"; }
-        }
-      } else {
-        if (diffQtyEl) { diffQtyEl.textContent = "—"; diffQtyEl.className = "text-3xl font-extrabold text-slate-800"; }
-        if (diffAccent) diffAccent.className = "absolute top-0 left-0 w-1.5 h-full bg-slate-300";
-        if (diffTitle) diffTitle.className = "text-xs font-bold uppercase tracking-wider text-slate-500";
-        if (diffStatusText) { diffStatusText.textContent = "Awaiting Closing Snapshot"; diffStatusText.className = "text-xs font-medium text-slate-400 mt-1"; }
-      }
-
-      const container = document.getElementById("tallyDetailSectionContainer");
-      if (!container) return;
-      if (currentTallyCounter === "COIN") {
-        renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
-      } else {
-        renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate);
-      }
-    }
-
-    function renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
-      const openCategories = (openData && openData.categories) ? openData.categories : {};
-      const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
-      const recCategories = (recDate && recDate.categories) ? recDate.categories : {};
-      const grnCategories = (grnDate && grnDate.categories) ? grnDate.categories : {};
-      const issCategories = (issDate && issDate.categories) ? issDate.categories : {};
-      const saleCategories = (saleDate && saleDate.categories) ? saleDate.categories : {};
-
-      const allCatKeys = Array.from(new Set([
-        ...Object.keys(openCategories),
-        ...Object.keys(closeCategories),
-        ...Object.keys(recCategories),
-        ...Object.keys(grnCategories),
-        ...Object.keys(issCategories),
-        ...Object.keys(saleCategories)
-      ])).sort();
-
-      const sectionTitle = currentTallyCounter === "BANGLE" 
-        ? "Bangles Reconciliation by Set" 
-        : (currentTallyCounter === "GEP" || currentTallyCounter === "TEP" ? `${currentTallyCounter} Reconciliation` : "Counter Category Reconciliation Table");
-
-      let rowsHtml = "";
-      if (allCatKeys.length === 0) {
-        rowsHtml = `<tr><td colspan="8" class="px-5 py-6 text-center text-slate-400 text-xs">No records for this counter</td></tr>`;
-      } else {
-        allCatKeys.forEach(cat => {
-          const oQ = getSafeQty(openCategories[cat]);
-          const rQ = getSafeQty(recCategories[cat]);
-          const gQ = getSafeQty(grnCategories[cat]);
-          const iQ = getSafeQty(issCategories[cat]);
-          const sQ = getSafeQty(saleCategories[cat]);
-
-          const systemClosing = oQ + rQ + gQ - iQ - sQ;
-          const hasCloseCat = closeData && closeCategories[cat] !== undefined;
-          const cQ = hasCloseCat ? getSafeQty(closeCategories[cat]) : null;
-
-          let diffDisplay = "—";
-          let diffClass = "text-slate-400";
-          if (cQ !== null) {
-            const diff = cQ - systemClosing;
-            diffDisplay = diff > 0 ? `+${diff}` : `${diff}`;
-            diffClass = diff === 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-extrabold";
-          }
-
-          rowsHtml += `
-            <tr class="hover:bg-slate-50 transition-colors">
-              <td class="px-4 py-2.5 font-medium text-slate-800">${cat}</td>
-              <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-blue-600">${rQ > 0 ? `+${rQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-emerald-600">${gQ > 0 ? `+${gQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-purple-600">${iQ > 0 ? `-${iQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-rose-600">${sQ > 0 ? `-${sQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
-              <td class="px-4 py-2.5 text-right ${diffClass}">${diffDisplay}</td>
-            </tr>
-          `;
-        });
-      }
-
-      container.innerHTML = `
-        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 class="text-sm font-bold text-slate-800">${sectionTitle}</h2>
-            <button onclick="copyTableToExcel('tallyReconcileTable', '${selectedDate}', '${currentTallyCounter}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
-              📋 Copy for Stock Book
-            </button>
-          </div>
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left text-xs" id="tallyReconcileTable">
-              <thead class="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
-                <tr>
-                  <th class="px-4 py-3">${currentTallyCounter === "BANGLE" ? "Bangle Set" : (currentTallyCounter === "GEP" || currentTallyCounter === "TEP" ? "Counter Group" : "Category")}</th>
-                  <th class="px-3 py-3 text-right">Opening</th>
-                  <th class="px-3 py-3 text-right text-blue-700">+Rec</th>
-                  <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
-                  <th class="px-3 py-3 text-right text-purple-700">-Iss</th>
-                  <th class="px-3 py-3 text-right text-rose-700">-Sold</th>
-                  <th class="px-3 py-3 text-right font-bold text-slate-800">Closing</th>
-                  <th class="px-4 py-3 text-right">Difference</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                ${rowsHtml}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate) {
-      const openCoins = (openData && openData.coinBreakdown) ? openData.coinBreakdown : { gold: {}, silver: {} };
-      const closeCoins = (closeData && closeData.coinBreakdown) ? closeData.coinBreakdown : { gold: {}, silver: {} };
-
-      function buildCoinRows(metalKey) {
-        const oDict = openCoins[metalKey] || {};
-        const cDict = (hasClosing && closeData) ? (closeCoins[metalKey] || {}) : null;
-
-        const allWeights = Array.from(new Set([
-          ...Object.keys(oDict),
-          ...(cDict ? Object.keys(cDict) : [])
-        ])).map(Number).sort((a,b) => a - b);
-
-        if (allWeights.length === 0) return `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400 text-xs">No coins recorded</td></tr>`;
-
-        let html = "";
-        let totalOpen = 0;
-        let totalClose = 0;
-
-        allWeights.forEach(wt => {
-          const oQ = Number(oDict[wt]) || 0;
-          const cQ = cDict ? (Number(cDict[wt]) || 0) : null;
-          totalOpen += oQ;
-          if (cQ !== null) totalClose += cQ;
-          const diff = cQ !== null ? (cQ - oQ) : null;
-
-          html += `
-            <tr class="hover:bg-slate-50">
-              <td class="px-4 py-2 font-bold text-slate-800">${wt} g</td>
-              <td class="px-4 py-2 text-right font-medium text-slate-700">${hasOpening ? oQ : "—"}</td>
-              <td class="px-4 py-2 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
-              <td class="px-4 py-2 text-right font-semibold ${cQ !== null ? (diff === 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}">
-                ${cQ !== null ? (diff > 0 ? `+${diff}` : `${diff}`) : "—"}
-              </td>
-            </tr>
-          `;
-        });
-
-        const totalDiff = totalClose - totalOpen;
-        html += `
-          <tr class="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
-            <td class="px-4 py-2">Total Coins</td>
-            <td class="px-4 py-2 text-right">${hasOpening ? totalOpen : "—"}</td>
-            <td class="px-4 py-2 text-right">${hasClosing && closeData ? totalClose : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
-            <td class="px-4 py-2 text-right ${hasClosing && closeData ? (totalDiff === 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400'}">
-              ${hasClosing && closeData ? (totalDiff > 0 ? `+${totalDiff}` : totalDiff) : "—"}
-            </td>
-          </tr>
-        `;
-        return html;
-      }
-
-      container.innerHTML = `
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown (Pcs by Gram Weight)</h2>
-            <button onclick="copyTableToExcel('goldCoinsTable', '${selectedDate}', 'COIN')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
-              📋 Copy for Stock Book
-            </button>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-xs">
-              <div class="px-4 py-3 bg-amber-500 text-white font-bold text-xs uppercase tracking-wider">🟡 Gold Coins (24K)</div>
-              <table class="w-full text-left text-xs" id="goldCoinsTable">
-                <thead class="bg-amber-50 text-amber-900 font-semibold border-b border-amber-200">
-                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">${buildCoinRows("gold")}</tbody>
-              </table>
-            </div>
-            <div class="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xs">
-              <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase tracking-wider">⚪ Silver Coins</div>
-              <table class="w-full text-left text-xs" id="silverCoinsTable">
-                <thead class="bg-slate-100 text-slate-800 font-semibold border-b border-slate-200">
-                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">${buildCoinRows("silver")}</tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function resetTallyDashboard() {
-      const closeEl = document.getElementById("tallyCloseQty");
-      const openEl = document.getElementById("tallyOpenQty");
-      const transEl = document.getElementById("tallyTransQty");
-      const diffEl = document.getElementById("tallyDiffQty");
-      if (closeEl) closeEl.textContent = "0";
-      if (openEl) openEl.textContent = "0";
-      if (transEl) transEl.textContent = "0";
-      if (diffEl) diffEl.textContent = "0";
-      const subClose = document.getElementById("tallyClosingDateSub");
-      const subOpen = document.getElementById("tallyOpeningDateSub");
-      if (subClose) subClose.textContent = "—";
-      if (subOpen) subOpen.textContent = "—";
-      const c = document.getElementById("tallyDetailSectionContainer");
-      if (c) c.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
-    }
-
-    // ========================================================
-    // TAB 2 RENDERER: 📈 COUNTER SALES & SCHEMES DESK
-    // ========================================================
-    function renderSalesDesk() {
-      const selectEl = document.getElementById("salesDateSelect");
-      if (!selectEl) return;
-      const selectedDate = selectEl.value;
-      if (!selectedDate) {
-        const sumEl = document.getElementById("salesSummaryContainer");
-        const prodEl = document.getElementById("salesProductsContainer");
-        if (sumEl) sumEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
-        if (prodEl) prodEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
-        return;
-      }
-
-      if (activeSalesSubTab === "summary") {
-        renderSalesSummaryCards(selectedDate);
-      } else {
-        renderSalesProductsDetail(selectedDate);
-      }
-    }
-
-    function renderSalesSummaryCards(selectedDate) {
-      const container = document.getElementById("salesSummaryContainer");
-      if (!container) return;
-      container.innerHTML = "";
-
-      const mRec = currentMonthData || {};
-      const salesData = mRec.sales || {};
-      const ghsData = mRec.ghs || {};
-      const baselineMap = (currentYtdBaseline && currentYtdBaseline.baselines) ? currentYtdBaseline.baselines : defaultYtdPrior;
-
-      const selD = parseDateStr(selectedDate);
-      const mtdDates = Object.keys(salesData).filter(dStr => {
-        const d = parseDateStr(dStr);
-        return d.getMonth() === selD.getMonth() && d.getFullYear() === selD.getFullYear() && d <= selD;
-      });
-
-      function getMetricsForCounter(cnt) {
-        const dayItem = (salesData[selectedDate] && salesData[selectedDate][cnt]) ? salesData[selectedDate][cnt] : { value: 0 };
-        const dayLakhs = (dayItem.value || 0) / 100000;
-
-        let mtdVal = 0;
-        mtdDates.forEach(dStr => {
-          if (salesData[dStr] && salesData[dStr][cnt]) {
-            mtdVal += Number(salesData[dStr][cnt].value) || 0;
-          }
-        });
-        const mtdLakhs = mtdVal / 100000;
-
-        const priorLakhs = Number(baselineMap[cnt] !== undefined ? baselineMap[cnt] : (defaultYtdPrior[cnt] || 0));
-        const ytdLakhs = priorLakhs + mtdLakhs;
-
-        return { dayLakhs, mtdLakhs, ytdLakhs };
-      }
-
-      const storeMetrics = getMetricsForCounter("STORE");
-
-      const dayGhs = ghsData[selectedDate] || { count: 0, value: 0 };
-      let mtdGhsCount = 0;
-      let mtdGgsVal = 0;
-      Object.keys(ghsData).forEach(dStr => {
-        const d = parseDateStr(dStr);
-        if (d.getMonth() === selD.getMonth() && d.getFullYear() === selD.getFullYear() && d <= selD) {
-          mtdGhsCount += Number(ghsData[dStr].count) || 0;
-          mtdGgsVal += Number(ghsData[dStr].value) || 0;
-        }
-      });
-      const dayGgsLakhs = (dayGhs.value || 0) / 100000;
-      const mtdGgsLakhs = mtdGgsVal / 100000;
-
-      const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
-
-      const cardsGrid = document.createElement("div");
-      cardsGrid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
-
-      countersToShow.forEach(cnt => {
-        const cntMetrics = getMetricsForCounter(cnt);
-
-        const card = document.createElement("div");
-        card.className = "bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between";
-        card.innerHTML = `
-          <div>
-            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
-              <span class="font-bold text-xs tracking-wider uppercase">${cnt} COUNTER</span>
-              <span class="text-[10px] text-amber-400 font-semibold">${selectedDate}</span>
-            </div>
-
-            <div class="p-4">
-              <table class="w-full text-xs">
-                <thead>
-                  <tr class="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100">
-                    <th class="pb-1.5 text-left">METRIC</th>
-                    <th class="pb-1.5 text-right text-slate-800">COUNTER</th>
-                    <th class="pb-1.5 text-right text-slate-500">STORE</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-medium">
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">DAY (L)</td>
-                    <td class="py-1.5 text-right font-extrabold text-slate-900">${cntMetrics.dayLakhs.toFixed(2)} L</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.dayLakhs.toFixed(2)} L</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">MTD (L)</td>
-                    <td class="py-1.5 text-right font-extrabold text-blue-600">${cntMetrics.mtdLakhs.toFixed(2)} L</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.mtdLakhs.toFixed(2)} L</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">YTD (L)</td>
-                    <td class="py-1.5 text-right font-extrabold text-purple-600">${cntMetrics.ytdLakhs.toFixed(2)} L</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.ytdLakhs.toFixed(2)} L</td>
-                  </tr>
-                  <tr class="bg-slate-50/60">
-                    <td class="py-1.5 font-bold text-amber-800">GHS (Count)</td>
-                    <td class="py-1.5 text-right font-bold text-amber-700">${dayGhs.count}</td>
-                    <td class="py-1.5 text-right text-slate-600">${mtdGhsCount} (MTD)</td>
-                  </tr>
-                  <tr class="bg-slate-50/60">
-                    <td class="py-1.5 font-bold text-amber-800">GGS (L)</td>
-                    <td class="py-1.5 text-right font-bold text-amber-700">${dayGgsLakhs.toFixed(2)} L</td>
-                    <td class="py-1.5 text-right text-slate-600">${mtdGgsLakhs.toFixed(2)} L (MTD)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Share of Store:</span>
-            <span class="font-bold text-slate-800">${storeMetrics.dayLakhs > 0 ? ((cntMetrics.dayLakhs / storeMetrics.dayLakhs) * 100).toFixed(1) : 0}%</span>
-          </div>
-        `;
-        cardsGrid.appendChild(card);
-      });
-
-      container.appendChild(cardsGrid);
-    }
-
-    function renderSalesProductsDetail(selectedDate) {
-      const container = document.getElementById("salesProductsContainer");
-      if (!container) return;
-      container.innerHTML = "";
-
-      const mRec = currentMonthData || {};
-      const salesItemsByDate = mRec.sales_items || {};
-      const dateItems = salesItemsByDate[selectedDate] || {};
-
-      const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
-
-      const detailGrid = document.createElement("div");
-      detailGrid.className = "space-y-4";
-
-      countersToShow.forEach(cnt => {
-        const prodDict = dateItems[cnt] || {};
-        const activeProds = Object.keys(prodDict).filter(p => {
-          const item = prodDict[p];
-          return item.soldQty > 0 || item.grnQty > 0;
-        });
-
-        const section = document.createElement("div");
-        section.className = "bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs";
-
-        let tbodyHtml = "";
-        let totSold = 0;
-        let totGrn = 0;
-        let totWt = 0;
-        let totVal = 0;
-
-        if (activeProds.length === 0) {
-          tbodyHtml = `
-            <tr>
-              <td colspan="6" class="px-4 py-5 text-center text-slate-400 text-xs font-semibold">
-                — NIL SALE RECORDED ON THIS DATE —
-              </td>
-            </tr>
-          `;
-        } else {
-          activeProds.forEach(prod => {
-            const data = prodDict[prod];
-            const netQty = data.soldQty - data.grnQty;
-
-            totSold += data.soldQty;
-            totGrn += data.grnQty;
-            totWt += data.weight;
-            totVal += data.value;
-
-            tbodyHtml += `
-              <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-4 py-2.5 font-bold text-slate-800">${prod}</td>
-                <td class="px-3 py-2.5 text-right font-medium text-slate-700">${data.weight.toFixed(3)} g</td>
-                <td class="px-3 py-2.5 text-right font-semibold text-emerald-600">${data.soldQty > 0 ? `+${data.soldQty}` : 0}</td>
-                <td class="px-3 py-2.5 text-right font-semibold text-rose-600">${data.grnQty > 0 ? `-${data.grnQty}` : 0}</td>
-                <td class="px-3 py-2.5 text-right font-extrabold text-slate-900">${netQty}</td>
-                <td class="px-4 py-2.5 text-right font-extrabold text-slate-900">₹${Math.round(data.value).toLocaleString()}</td>
-              </tr>
-            `;
-          });
-
-          tbodyHtml += `
-            <tr class="bg-slate-50 font-bold border-t-2 border-slate-200 text-slate-900">
-              <td class="px-4 py-2.5">Total ${cnt}</td>
-              <td class="px-3 py-2.5 text-right">${totWt.toFixed(3)} g</td>
-              <td class="px-3 py-2.5 text-right text-emerald-600">+${totSold}</td>
-              <td class="px-3 py-2.5 text-right text-rose-600">-${totGrn}</td>
-              <td class="px-3 py-2.5 text-right">${totSold - totGrn}</td>
-              <td class="px-4 py-2.5 text-right">₹${Math.round(totVal).toLocaleString()}</td>
-            </tr>
-          `;
-        }
-
-        section.innerHTML = `
-          <div class="px-4 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
-            <span class="font-bold text-xs uppercase tracking-wider text-slate-800">${cnt} COUNTER</span>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded ${activeProds.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
-              ${activeProds.length > 0 ? `${activeProds.length} Product${activeProds.length > 1 ? 's' : ''} Sold` : 'NIL'}
-            </span>
-          </div>
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left text-xs" id="tableSalesProd_${cnt}">
-              <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
-                <tr>
-                  <th class="px-4 py-2.5">Product</th>
-                  <th class="px-3 py-2.5 text-right">Net Weight</th>
-                  <th class="px-3 py-2.5 text-right text-emerald-700">Sold (Pcs)</th>
-                  <th class="px-3 py-2.5 text-right text-rose-700">GRN (Pcs)</th>
-                  <th class="px-3 py-2.5 text-right">Net Pcs</th>
-                  <th class="px-4 py-2.5 text-right">Total UCP (₹)</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                ${tbodyHtml}
-              </tbody>
-            </table>
-          </div>
-        `;
-        detailGrid.appendChild(section);
-      });
-
-      const topBar = document.createElement("div");
-      topBar.className = "flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs";
-      topBar.innerHTML = `
-        <span class="text-xs font-bold text-slate-800">Sales Product Breakdown for: <b class="text-amber-600">${selectedDate}</b></span>
-        <button onclick="copyAllSalesDetailTables('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
-          📋 Copy All Product Details for Excel
-        </button>
-      `;
-
-      container.appendChild(topBar);
-      container.appendChild(detailGrid);
-    }
-
-    // --- Excel Copy Handlers ---
-    window.copyTableToExcel = async function(tableId, dateStr, counterName) {
-      const table = document.getElementById(tableId);
-      if (!table) return alert("Table not found.");
-
-      let tsvText = `Date: ${dateStr} | Counter: ${counterName}\r\n`;
-      let htmlTable = `<table border="1">`;
-
-      Array.from(table.querySelectorAll("tr")).forEach(r => {
-        htmlTable += "<tr>";
-        const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim());
-        tsvText += rowCells.join("\t") + "\r\n";
-        rowCells.forEach(cellText => { htmlTable += `<td>${cellText}</td>`; });
-        htmlTable += "</tr>";
-      });
-      htmlTable += "</table>";
-
-      try {
-        if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/plain": new Blob([tsvText], { type: "text/plain" }),
-              "text/html": new Blob([htmlTable], { type: "text/html" })
-            })
-          ]);
-        } else {
-          await navigator.clipboard.writeText(tsvText);
-        }
-        alert("Copied table to clipboard! Press Ctrl + V directly inside Microsoft Excel.");
-      } catch (err) {
-        navigator.clipboard.writeText(tsvText).then(() => alert("Copied table as tab-separated values for Excel!"));
-      }
-    };
-
-    window.copyAllSalesDetailTables = async function(dateStr) {
-      const tables = document.querySelectorAll("[id^='tableSalesProd_']");
-      if (!tables || tables.length === 0) return alert("No sales tables to copy.");
-
-      let tsvText = `Sales Product Breakdown | Date: ${dateStr}\r\n\r\n`;
-      let htmlTable = `<table border="1">`;
-
-      tables.forEach(table => {
-        const cntName = table.id.replace("tableSalesProd_", "");
-        tsvText += `[${cntName} COUNTER]\r\n`;
-        htmlTable += `<tr><th colspan="6" style="background:#f1f5f9;font-weight:bold;">${cntName} COUNTER</th></tr>`;
-
-        Array.from(table.querySelectorAll("tr")).forEach(r => {
-          htmlTable += "<tr>";
-          const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim());
-          tsvText += rowCells.join("\t") + "\r\n";
-          rowCells.forEach(cellText => { htmlTable += `<td>${cellText}</td>`; });
-          htmlTable += "</tr>";
-        });
-        tsvText += "\r\n";
-      });
-      htmlTable += "</table>";
-
-      try {
-        if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/plain": new Blob([tsvText], { type: "text/plain" }),
-              "text/html": new Blob([htmlTable], { type: "text/html" })
-            })
-          ]);
-        } else {
-          await navigator.clipboard.writeText(tsvText);
-        }
-        alert("Copied all product details! Press Ctrl + V directly inside Microsoft Excel.");
-      } catch (err) {
-        navigator.clipboard.writeText(tsvText).then(() => alert("Copied table as tab-separated values for Excel!"));
-      }
-    };
-
+    // --- Manage Uploads Handlers ---
     function renderManageList() {
       renderManageDaysList();
       renderManageMonthsList();
@@ -2189,7 +1477,7 @@
               </span>
             </div>
             <div class="text-xs text-slate-500 space-y-0.5">
-              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime} ${openFile}` : 'None'}</span></p>
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
               <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : (resolved ? resolved.closingTimeLabel : 'Pending')}</span></p>
             </div>
           </div>
