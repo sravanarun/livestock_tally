@@ -40,6 +40,9 @@
         <button id="navBtnSales" type="button" class="px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
           📈 Counter Sales Desk
         </button>
+        <button id="navBtnDsr" type="button" class="px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+          📋 DSR Desk
+        </button>
         <button id="navBtnData" type="button" class="px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
           📁 Data Center
         </button>
@@ -47,9 +50,23 @@
 
       <!-- Utility Actions -->
       <div class="flex items-center gap-2">
-        <button id="btnOpenYtdModal" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1 cursor-pointer">
+        
+        <!-- DSR Specific -->
+        <button id="btnOpenRsoModal" type="button" class="hidden text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+          ⚙ Current RSOs
+        </button>
+        <button id="btnOpenTargetModal" type="button" class="hidden text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+          🎯 Target Working
+        </button>
+        <button id="btnOpenTurnModal" type="button" class="hidden text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300">
+          🔄 Sub 1L Turns
+        </button>
+
+        <!-- Counter Sales Specific -->
+        <button id="btnOpenYtdModal" type="button" class="hidden text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 flex items-center gap-1 cursor-pointer">
           <span>⚙</span> YTD Setup
         </button>
+
         <button id="btnOpenManage" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors border border-slate-300 cursor-pointer">
           Manage Files
         </button>
@@ -65,7 +82,7 @@
   </header>
 
   <!-- MAIN VIEWPORT -->
-  <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1 flex flex-col gap-6">
+  <main class="max-w-[95%] mx-auto px-4 py-6 w-full flex-1 flex flex-col gap-6">
 
     <!-- ========================================== -->
     <!-- VIEW 1: ⚖️ STOCK TALLY DESK                  -->
@@ -233,7 +250,36 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- VIEW 3: 📁 DATA MANAGEMENT CENTER          -->
+    <!-- VIEW 3: 📋 DSR DESK                         -->
+    <!-- ========================================== -->
+    <div id="viewDsrDesk" class="space-y-6 hidden">
+      <!-- DSR Filter Bar -->
+      <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <label for="dsrDateSelect" class="text-sm font-semibold text-slate-700">Report Date:</label>
+          <select id="dsrDateSelect" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm font-medium rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-400 focus:outline-none min-w-[150px]"></select>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openDailyEntryModal('ccaf')" type="button" class="text-xs px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded border border-blue-200 transition-colors">📝 Edit CCAF</button>
+          <button onclick="openDailyEntryModal('np')" type="button" class="text-xs px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded border border-rose-200 transition-colors">📝 Edit NP</button>
+        </div>
+      </section>
+
+      <!-- Sale Report -->
+      <div id="dsrSaleReport" class="space-y-6"></div>
+
+      <!-- Sub 1L & CCAF -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div id="dsrSub1L" class="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden"></div>
+         <div id="dsrCcaf" class="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden"></div>
+      </div>
+
+      <!-- Pending Scheme -->
+      <div id="dsrPendingScheme" class="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden"></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 4: 📁 DATA MANAGEMENT CENTER          -->
     <!-- ========================================== -->
     <div id="viewDataCenter" class="space-y-6 hidden">
       <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
@@ -370,12 +416,11 @@
         </div>
       </section>
     </div>
-
   </main>
 
-  <!-- MODAL 1: YTD SETUP -->
+  <!-- MODAL: YTD SETUP -->
   <div id="ytdModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
           <h3 class="font-bold text-slate-900 text-base">YTD Prior Month Baseline Setup</h3>
@@ -397,7 +442,83 @@
     </div>
   </div>
 
-  <!-- MODAL 2: MANAGE FILES -->
+  <!-- MODAL: DSR RSO CONFIG -->
+  <div id="dsrRsoModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full flex flex-col shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Current Month RSOs</h3>
+          <p class="text-xs text-slate-500">One name per line. Applied to DSR & Reports.</p>
+        </div>
+      </div>
+      <div class="p-6">
+        <textarea id="dsrRsoInput" rows="8" class="w-full text-sm font-semibold text-slate-800 bg-slate-50 border border-slate-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 uppercase" placeholder="ABISHEK ARUL&#10;ABISITH&#10;..."></textarea>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button onclick="saveDsrRso()" type="button" class="text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer">Save RSOs</button>
+        <button onclick="document.getElementById('dsrRsoModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DSR TARGET WORKING -->
+  <div id="dsrTargetModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <h3 class="font-bold text-slate-900 text-base">Target Working</h3>
+        <p class="text-xs text-slate-500">Set daily store target. Total target is auto-divided by active RSOs.</p>
+        <div class="flex gap-2 mt-3 p-2 bg-blue-50 border border-blue-100 rounded">
+          <input type="number" id="tgtWkday" placeholder="Weekday Tgt (e.g. 577820)" class="text-xs px-2 py-1 rounded border border-blue-200 focus:outline-none flex-1">
+          <input type="number" id="tgtWkend" placeholder="Weekend Tgt (e.g. 1711000)" class="text-xs px-2 py-1 rounded border border-blue-200 focus:outline-none flex-1">
+          <button type="button" onclick="applyTargetDefaults()" class="text-xs font-bold bg-blue-600 text-white px-3 py-1 rounded">Apply</button>
+        </div>
+      </div>
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+        <div id="dsrTargetGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button onclick="saveDsrTargets()" type="button" class="text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer">Save Targets</button>
+        <button onclick="document.getElementById('dsrTargetModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DSR SUB 1L TURNS -->
+  <div id="dsrTurnModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Sub 1 Lakh Turns</h3>
+          <p class="text-xs text-slate-500">Assign turn RSO for each day.</p>
+        </div>
+      </div>
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+        <div id="dsrTurnGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button onclick="saveDsrTurns()" type="button" class="text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer">Save Turns</button>
+        <button onclick="document.getElementById('dsrTurnModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DSR DAILY CCAF/NP -->
+  <div id="dsrDailyEntryModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full flex flex-col shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <h3 id="dsrDailyEntryTitle" class="font-bold text-slate-900 text-base">Edit Entry</h3>
+      </div>
+      <div class="p-6">
+        <div id="dsrDailyEntryGrid" class="space-y-3"></div>
+      </div>
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <button onclick="saveDailyEntry()" type="button" class="text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer">Save Entries</button>
+        <button onclick="document.getElementById('dsrDailyEntryModal').classList.add('hidden')" type="button" class="text-xs font-semibold px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGE FILES -->
   <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -511,7 +632,6 @@
         req.onsuccess = () => resolve(req.result); req.onerror = reject;
       });
     }
-
     async function clearAllData() {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(["days", "monthly_transactions", "ytd_baselines"], "readwrite");
@@ -531,8 +651,9 @@
     let activeSalesSubTab = "summary";
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
-    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {} };
+    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
     let currentYtdBaseline = null;
+    let currentDailyEntryType = "ccaf";
 
     const defaultYtdPrior = { "EARRING": 82.66, "CHAIN": 320.34, "COLOR": 29.41, "STUDDED": 288.81, "RING": 72.14, "WEDDING": 80.13, "BANGLE": 146.74, "COIN": 17.70, "GEP": 0.00, "TEP": 0.00, "STORE": 1037.94 };
 
@@ -543,17 +664,30 @@
       return Number(catData) || 0;
     }
 
-    function parseDateStr(str) {
-      if (!str || typeof str !== 'string') return new Date(0);
-      const parts = str.split("-").map(Number);
+    function parseDateToObj(dateStr) {
+      if (!dateStr || typeof dateStr !== 'string') return new Date(0);
+      const parts = dateStr.split("-").map(Number);
       if (parts.length < 3 || isNaN(parts[0])) return new Date(0);
       return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+    const parseDateStr = parseDateToObj;
+
+    function getDaysInMonth(monthKey) {
+      const parts = monthKey.split('-');
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      const days = new Date(y, m, 0).getDate();
+      const arr = [];
+      for(let i=1; i<=days; i++) {
+        arr.push(`${String(i).padStart(2,'0')}-${String(m).padStart(2,'0')}-${y}`);
+      }
+      return arr;
     }
 
     function isConsecutiveDay(dateStr1, dateStr2) {
       if (!dateStr1 || !dateStr2) return false;
-      const d1 = parseDateStr(dateStr1);
-      const d2 = parseDateStr(dateStr2);
+      const d1 = parseDateToObj(dateStr1);
+      const d2 = parseDateToObj(dateStr2);
       return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) === 1;
     }
 
@@ -666,24 +800,20 @@
       const badgeData = document.getElementById("dataCenterMapBadge");
       try {
         const res = await fetch("Stock_related_map.xlsx");
-        if (!res.ok) throw new Error("Could not find Stock_related_map.xlsx");
+        if (!res.ok) throw new Error("Could not find map");
         const arrayBuffer = await res.arrayBuffer();
         const wb = XLSX.read(arrayBuffer, { type: "array" });
 
         const groupSheet = wb.Sheets["Group"];
         if (groupSheet) {
           XLSX.utils.sheet_to_json(groupSheet).forEach(row => {
-            if (row["Original Group"] && row["Final Group"]) {
-              mapping.groups[String(row["Original Group"]).trim()] = String(row["Final Group"]).trim();
-            }
+            if (row["Original Group"] && row["Final Group"]) mapping.groups[String(row["Original Group"]).trim()] = String(row["Final Group"]).trim();
           });
         }
         const catSheet = wb.Sheets["Category"];
         if (catSheet) {
           XLSX.utils.sheet_to_json(catSheet).forEach(row => {
-            if (row["Original Category"] && row["Final Category"]) {
-              mapping.categories[String(row["Original Category"]).trim()] = String(row["Final Category"]).trim();
-            }
+            if (row["Original Category"] && row["Final Category"]) mapping.categories[String(row["Original Category"]).trim()] = String(row["Final Category"]).trim();
           });
         }
         const counterSheet = wb.Sheets["Counter"];
@@ -702,7 +832,6 @@
 
         renderTallyCounterButtons();
         renderSalesCounterButtons();
-
         if (badgeData) { badgeData.textContent = "Map Active"; badgeData.className = "text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800"; }
       } catch (err) {
         console.warn("Map load warning:", err);
@@ -722,11 +851,7 @@
         btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-xs cursor-pointer ${
           isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
         }`;
-        btn.onclick = () => {
-          currentTallyCounter = cnt;
-          renderTallyCounterButtons();
-          renderTallyDashboard();
-        };
+        btn.onclick = () => { currentTallyCounter = cnt; renderTallyCounterButtons(); renderTallyDashboard(); };
         container.appendChild(btn);
       });
     }
@@ -743,11 +868,7 @@
         btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-xs cursor-pointer ${
           isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
         }`;
-        btn.onclick = () => {
-          currentSalesCounter = cnt;
-          renderSalesCounterButtons();
-          renderSalesDesk();
-        };
+        btn.onclick = () => { currentSalesCounter = cnt; renderSalesCounterButtons(); renderSalesDesk(); };
         container.appendChild(btn);
       });
     }
@@ -755,30 +876,46 @@
     function setupNavigationHandlers() {
       const navBtnTally = document.getElementById("navBtnTally");
       const navBtnSales = document.getElementById("navBtnSales");
+      const navBtnDsr = document.getElementById("navBtnDsr");
       const navBtnData = document.getElementById("navBtnData");
 
       const viewTallyDesk = document.getElementById("viewTallyDesk");
       const viewSalesDesk = document.getElementById("viewSalesDesk");
+      const viewDsrDesk = document.getElementById("viewDsrDesk");
       const viewDataCenter = document.getElementById("viewDataCenter");
+
+      const topBtns = {
+        rso: document.getElementById("btnOpenRsoModal"),
+        tgt: document.getElementById("btnOpenTargetModal"),
+        trn: document.getElementById("btnOpenTurnModal"),
+        ytd: document.getElementById("btnOpenYtdModal")
+      };
 
       function switchView(activeNav, activeView) {
         if (!activeNav || !activeView) return;
-        [navBtnTally, navBtnSales, navBtnData].forEach(btn => {
+        [navBtnTally, navBtnSales, navBtnDsr, navBtnData].forEach(btn => {
           if (btn) btn.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer";
         });
         activeNav.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition-all cursor-pointer";
 
-        [viewTallyDesk, viewSalesDesk, viewDataCenter].forEach(v => {
+        [viewTallyDesk, viewSalesDesk, viewDsrDesk, viewDataCenter].forEach(v => {
           if (v) v.classList.add("hidden");
         });
         activeView.classList.remove("hidden");
 
+        if (topBtns.ytd) topBtns.ytd.classList.toggle("hidden", activeView !== viewSalesDesk);
+        if (topBtns.rso) topBtns.rso.classList.toggle("hidden", activeView !== viewDsrDesk);
+        if (topBtns.tgt) topBtns.tgt.classList.toggle("hidden", activeView !== viewDsrDesk);
+        if (topBtns.trn) topBtns.trn.classList.toggle("hidden", activeView !== viewDsrDesk);
+
         if (activeView === viewTallyDesk) renderTallyDashboard();
         if (activeView === viewSalesDesk) renderSalesDesk();
+        if (activeView === viewDsrDesk) renderDsrDesk();
       }
 
       if (navBtnTally) navBtnTally.onclick = () => switchView(navBtnTally, viewTallyDesk);
       if (navBtnSales) navBtnSales.onclick = () => switchView(navBtnSales, viewSalesDesk);
+      if (navBtnDsr) navBtnDsr.onclick = () => switchView(navBtnDsr, viewDsrDesk);
       if (navBtnData) navBtnData.onclick = () => switchView(navBtnData, viewDataCenter);
 
       const salesSubTabSummary = document.getElementById("salesSubTabSummary");
@@ -795,7 +932,6 @@
           if (salesProductsContainer) salesProductsContainer.classList.add("hidden");
           renderSalesDesk();
         };
-
         salesSubTabProducts.onclick = () => {
           activeSalesSubTab = "products";
           salesSubTabProducts.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
@@ -805,6 +941,10 @@
           renderSalesDesk();
         };
       }
+
+      if (topBtns.rso) topBtns.rso.onclick = openDsrRsoModal;
+      if (topBtns.tgt) topBtns.tgt.onclick = openDsrTargetModal;
+      if (topBtns.trn) topBtns.trn.onclick = openDsrTurnModal;
     }
 
     async function initYtdBaseline() {
@@ -853,15 +993,7 @@
       return dataRows;
     }
 
-    function extractMonthKey(dateStr) {
-      if (!dateStr) return null;
-      const parts = dateStr.split("-");
-      if (parts.length === 3) return `${parts[2]}-${parts[1]}`;
-      return null;
-    }
-
     // --- UPLOAD PARSERS ---
-    // ALL PARSERS NOW STRICTLY BIND TO currentActiveMonth to eliminate "missing" file drift bugs.
 
     async function processLiveStockFile(file) {
       const reader = new FileReader();
@@ -930,6 +1062,7 @@
           const salesByDate = {};
           const salesItemsByDate = {};
           const grnByDate = {};
+          const rawSales = [];
 
           rows.forEach(r => {
             const loc = String(r["Location Code"] || "").trim().toUpperCase();
@@ -943,11 +1076,23 @@
             const binCode = String(r["Bin Code"] || "").trim().toUpperCase();
             const itemCode = String(r["Item Code"] || "").trim();
 
-            const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
+            const { counter, finalCat, finalGroup } = resolveCounter(origGroup, origCat, binCode);
 
             const qty = Number(r["Quantity"] || 0);
             const val = Number(r["Total UCP"] || r["Total Invoice Value"] || 0);
             const wt = Number(r["Measured Wt"] || r["Actual Wt"] || r["Gross Wt"] || 0);
+            const dsrName = String(r["DSR NAME"] || "").trim().toUpperCase();
+            
+            let fGrp = String(r["Final Group"] || "").trim().toUpperCase();
+            if (!fGrp) fGrp = finalGroup.toUpperCase();
+
+            rawSales.push({
+               date: dateStr,
+               docNo: String(r["Doc No"] || ""),
+               rso: dsrName,
+               ucp: val,
+               finalGroup: fGrp
+            });
 
             let prodKey = finalCat;
             if (counter === "BANGLE") {
@@ -1022,9 +1167,10 @@
             }
           });
 
-          await updateMonthlyData("sales", salesByDate, file.name, { sales_items: salesItemsByDate, grn: grnByDate });
+          await updateMonthlyData("sales", salesByDate, file.name, { sales_items: salesItemsByDate, grn: grnByDate, salesRaw: rawSales });
           renderTallyDashboard();
           renderSalesDesk();
+          renderDsrDesk();
           alert(`Successfully updated Sales & GRN for ${currentActiveMonth}!`);
         } catch (err) {
           console.error(err);
@@ -1053,12 +1199,16 @@
           const headers = (rows[headerIdx] || []).map(h => String(h || "").trim());
           const dateCol = headers.findIndex(h => h.toLowerCase().includes("dateof enrolment"));
           const amtCol = headers.findIndex(h => h.toLowerCase().includes("installment amount"));
+          const rsoCol = headers.findIndex(h => h.toLowerCase().includes("rso") && !h.toLowerCase().includes("current"));
+          const currRsoCol = headers.findIndex(h => h.toLowerCase().includes("current rso"));
+          const lastInstCol = headers.findIndex(h => h.toLowerCase().includes("dateof last installment"));
 
           if (dateCol === -1 || amtCol === -1) {
-            throw new Error("Could not find 'Dateof Enrolment' or 'Installment Amount' columns in GHS report.");
+            throw new Error("Could not find required GHS columns.");
           }
 
           const ghsByDate = {};
+          const rawGhs = [];
 
           for (let r = headerIdx + 1; r < rows.length; r++) {
             const row = rows[r];
@@ -1068,13 +1218,27 @@
             if (!dateStr) continue;
 
             const amt = Number(row[amtCol] || 0);
+
+            const rso = rsoCol !== -1 ? String(row[rsoCol] || "").trim().toUpperCase() : "";
+            const currentRso = currRsoCol !== -1 ? String(row[currRsoCol] || "").trim().toUpperCase() : rso;
+            const lastInst = lastInstCol !== -1 ? normalizeDate(row[lastInstCol]) : "";
+
+            rawGhs.push({
+               rso: rso,
+               currentRso: currentRso || rso,
+               enrolDate: dateStr,
+               lastInstDate: lastInst,
+               amt: amt
+            });
+
             if (!ghsByDate[dateStr]) ghsByDate[dateStr] = { count: 0, value: 0 };
             ghsByDate[dateStr].count += 1;
             ghsByDate[dateStr].value += amt;
           }
 
-          await updateMonthlyData("ghs", ghsByDate, file.name);
+          await updateMonthlyData("ghs", ghsByDate, file.name, { ghsRaw: rawGhs });
           renderSalesDesk();
+          renderDsrDesk();
           alert(`Successfully updated GHS & GGS schemes for ${currentActiveMonth}!`);
         } catch (err) {
           console.error(err);
@@ -1091,21 +1255,17 @@
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           if (rows.length === 0) return alert("Receipt report is empty.");
-
           const receiptsByDate = {};
-
           rows.forEach(r => {
             if (String(r["STNStatus"] || "").trim().toUpperCase() !== "RECEIVED") return;
             const binCode = String(r["BinCode"] || r["Bin Code"] || "").trim().toUpperCase();
             const dateStr = normalizeDate(r["Doc Date"]);
             if (!dateStr) return;
-
             const origGroup = String(r["CFA Description"] || "").trim();
             const origCat = String(r["ProductCategory"] || "").trim();
             const itemCode = String(r["ItemCode"] || "").trim();
             const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
             const qty = Number(r["ReceivedQty"] || 0);
-
             let catKey = finalCat;
             if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
@@ -1114,25 +1274,19 @@
               else if (setChar === "4") catKey = "Set 4 (Set of 4)";
               else if (setChar) catKey = `Set ${setChar}`;
             }
-
             if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
             if (!receiptsByDate[dateStr][counter]) receiptsByDate[dateStr][counter] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
-
             receiptsByDate[dateStr][counter].qty += qty;
             receiptsByDate[dateStr][counter].categories[catKey] = (receiptsByDate[dateStr][counter].categories[catKey] || 0) + qty;
             receiptsByDate[dateStr]["ALL"].qty += qty;
             const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
             receiptsByDate[dateStr]["ALL"].categories[allCatKey] = (receiptsByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
-
           await updateMonthlyData("receipts", receiptsByDate, file.name);
           renderTallyDashboard();
           alert(`Updated Stock Receipts for ${currentActiveMonth}!`);
-        } catch (err) {
-          console.error(err);
-          alert("Error parsing Stock Receipt report.");
-        }
+        } catch (err) { alert("Error parsing Stock Receipt report."); }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -1144,33 +1298,25 @@
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           const receiptsByDate = {};
-
           rows.forEach(r => {
             const status = String(r["Status"] || "").trim().toUpperCase();
             if (status && status !== "CONFIRMED" && status !== "ACTIVE") return;
             const dateStr = normalizeDate(r["DATE"] || r["Doc Date"]);
             if (!dateStr) return;
-
             const qty = Number(r["QUANTITY"] || r["Quantity"] || 1);
-
             if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
             if (!receiptsByDate[dateStr][counterKey]) receiptsByDate[dateStr][counterKey] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
-
             receiptsByDate[dateStr][counterKey].qty += qty;
             receiptsByDate[dateStr][counterKey].categories[counterKey] = (receiptsByDate[dateStr][counterKey].categories[counterKey] || 0) + qty;
             receiptsByDate[dateStr]["ALL"].qty += qty;
             receiptsByDate[dateStr]["ALL"].categories[counterKey] = (receiptsByDate[dateStr]["ALL"].categories[counterKey] || 0) + qty;
           });
-
           const subField = counterKey === "GEP" ? "gep_receipts" : "tep_receipts";
           await updateMonthlyData(subField, receiptsByDate, file.name);
           renderTallyDashboard();
           alert(`Updated ${counterKey} Receipts for ${currentActiveMonth}!`);
-        } catch (err) {
-          console.error(err);
-          alert(`Error parsing ${counterKey} Receipt report.`);
-        }
+        } catch (err) { alert(`Error parsing ${counterKey} Receipt report.`); }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -1182,20 +1328,16 @@
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           if (rows.length === 0) return alert("Issue report is empty.");
-
           const issuesByDate = {};
-
           rows.forEach(r => {
             const binCode = String(r["Bin Code"] || r["BinCode"] || "").trim().toUpperCase();
             const dateStr = normalizeDate(r["STN Request Date"]);
             if (!dateStr) return;
-
             const origGroup = String(r["CFA Description"] || "").trim();
             const origCat = String(r["Product Category Description"] || "").trim();
             const itemCode = String(r["Variant Code"] || "").trim();
             const { counter, finalCat } = resolveCounter(origGroup, origCat, binCode);
             const qty = Number(r["Qty"] || 0);
-
             let catKey = finalCat;
             if (counter === "BANGLE") {
               const setChar = itemCode.length >= 11 ? itemCode.charAt(10) : "";
@@ -1204,25 +1346,19 @@
               else if (setChar === "4") catKey = "Set 4 (Set of 4)";
               else if (setChar) catKey = `Set ${setChar}`;
             }
-
             if (!issuesByDate[dateStr]) issuesByDate[dateStr] = {};
             if (!issuesByDate[dateStr][counter]) issuesByDate[dateStr][counter] = { qty: 0, categories: {} };
             if (!issuesByDate[dateStr]["ALL"]) issuesByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
-
             issuesByDate[dateStr][counter].qty += qty;
             issuesByDate[dateStr][counter].categories[catKey] = (issuesByDate[dateStr][counter].categories[catKey] || 0) + qty;
             issuesByDate[dateStr]["ALL"].qty += qty;
             const allCatKey = (counter === "BANGLE") ? "BANGLES" : catKey;
             issuesByDate[dateStr]["ALL"].categories[allCatKey] = (issuesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
-
           await updateMonthlyData("issues", issuesByDate, file.name);
           renderTallyDashboard();
           alert(`Updated Stock Issues for ${currentActiveMonth}!`);
-        } catch (err) {
-          console.error(err);
-          alert("Error parsing Stock Issue report.");
-        }
+        } catch (err) { alert("Error parsing Stock Issue report."); }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -1236,6 +1372,10 @@
       if (!mRec.files) mRec.files = {};
       mRec.files[fieldName] = fileName;
       mRec[fieldName] = dataByDate;
+
+      if (!mRec.dsrConfig) mRec.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
+      if (!mRec.salesRaw) mRec.salesRaw = [];
+      if (!mRec.ghsRaw) mRec.ghsRaw = [];
 
       Object.keys(extraFields).forEach(k => {
         mRec[k] = extraFields[k];
@@ -1292,8 +1432,10 @@
 
       currentActiveMonth = selData ? selData.value : "2026-10";
       currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
-        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}
+        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: []
       };
+
+      if (!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
 
       const btn = document.getElementById("btnArchiveMonth");
       if (btn) btn.textContent = currentMonthData.isArchived ? "🔓 Unlock Month" : "🔒 Archive Month";
@@ -1323,7 +1465,7 @@
         closingTimeLabel = `As of ${currentDay.closing.time || ''}`;
       } else if (nextDay && !isConsecutiveDay(currentDay.date, nextDay.date)) {
         closingType = "none";
-        const d = parseDateStr(currentDay.date);
+        const d = parseDateToObj(currentDay.date);
         d.setDate(d.getDate() + 1);
         const nextTargetStr = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
         closingTimeLabel = `Missing Next Day (${nextTargetStr})`;
@@ -1340,10 +1482,11 @@
 
     async function refreshDayList() {
       allDayRecords = await getAllDayRecords();
-      allDayRecords.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
+      allDayRecords.sort((a, b) => parseDateToObj(a.date) - parseDateToObj(b.date));
 
       const selTally = document.getElementById("tallyDateSelect");
       const selSales = document.getElementById("salesDateSelect");
+      const selDsr = document.getElementById("dsrDateSelect");
 
       const syncSelect = (sel) => {
         if (!sel) return;
@@ -1364,15 +1507,16 @@
 
       syncSelect(selTally);
       syncSelect(selSales);
+      syncSelect(selDsr);
 
       renderTallyDashboard();
       renderSalesDesk();
+      renderDsrDesk();
     }
 
     function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
       const res = { qty: 0, categories: {} };
       if (!mRec) return res;
-
       const addRec = (subDict) => {
         const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
         if (item) {
@@ -1382,7 +1526,6 @@
           });
         }
       };
-
       addRec(mRec.receipts);
       addRec(mRec.gep_receipts);
       addRec(mRec.tep_receipts);
@@ -1599,7 +1742,7 @@
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800">${sectionTitle}</h2>
-            <button onclick="copyTableToExcel('tallyReconcileTable', '${selectedDate}', '${currentTallyCounter}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
+            <button onclick="copyTableToExcel('tallyReconcileTable')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
               📋 Copy for Stock Book
             </button>
           </div>
@@ -1633,25 +1776,17 @@
       function buildCoinRows(metalKey) {
         const oDict = openCoins[metalKey] || {};
         const cDict = (hasClosing && closeData) ? (closeCoins[metalKey] || {}) : null;
-
-        const allWeights = Array.from(new Set([
-          ...Object.keys(oDict),
-          ...(cDict ? Object.keys(cDict) : [])
-        ])).map(Number).sort((a,b) => a - b);
-
+        const allWeights = Array.from(new Set([...Object.keys(oDict), ...(cDict ? Object.keys(cDict) : [])])).map(Number).sort((a,b) => a - b);
         if (allWeights.length === 0) return `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400 text-xs">No coins recorded</td></tr>`;
 
         let html = "";
-        let totalOpen = 0;
-        let totalClose = 0;
-
+        let totalOpen = 0, totalClose = 0;
         allWeights.forEach(wt => {
           const oQ = Number(oDict[wt]) || 0;
           const cQ = cDict ? (Number(cDict[wt]) || 0) : null;
           totalOpen += oQ;
           if (cQ !== null) totalClose += cQ;
           const diff = cQ !== null ? (cQ - oQ) : null;
-
           html += `
             <tr class="hover:bg-slate-50">
               <td class="px-4 py-2 font-bold text-slate-800">${wt} g</td>
@@ -1663,7 +1798,6 @@
             </tr>
           `;
         });
-
         const totalDiff = totalClose - totalOpen;
         html += `
           <tr class="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-900">
@@ -1677,33 +1811,19 @@
         `;
         return html;
       }
-
       container.innerHTML = `
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown (Pcs by Gram Weight)</h2>
-            <button onclick="copyTableToExcel('goldCoinsTable', '${selectedDate}', 'COIN')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
-              📋 Copy for Stock Book
-            </button>
+            <h2 class="text-sm font-bold text-slate-800">Coins Denomination Breakdown</h2>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-xs">
               <div class="px-4 py-3 bg-amber-500 text-white font-bold text-xs uppercase tracking-wider">🟡 Gold Coins (24K)</div>
-              <table class="w-full text-left text-xs" id="goldCoinsTable">
-                <thead class="bg-amber-50 text-amber-900 font-semibold border-b border-amber-200">
-                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">${buildCoinRows("gold")}</tbody>
-              </table>
+              <table class="w-full text-left text-xs"><thead class="bg-amber-50 text-amber-900 border-b border-amber-200"><tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr></thead><tbody class="divide-y divide-slate-100">${buildCoinRows("gold")}</tbody></table>
             </div>
             <div class="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-xs">
               <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase tracking-wider">⚪ Silver Coins</div>
-              <table class="w-full text-left text-xs" id="silverCoinsTable">
-                <thead class="bg-slate-100 text-slate-800 font-semibold border-b border-slate-200">
-                  <tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">${buildCoinRows("silver")}</tbody>
-              </table>
+              <table class="w-full text-left text-xs"><thead class="bg-slate-100 text-slate-800 border-b border-slate-200"><tr><th class="px-4 py-2">Weight (g)</th><th class="px-4 py-2 text-right">Opening</th><th class="px-4 py-2 text-right">Closing</th><th class="px-4 py-2 text-right">Difference</th></tr></thead><tbody class="divide-y divide-slate-100">${buildCoinRows("silver")}</tbody></table>
             </div>
           </div>
         </div>
@@ -1719,10 +1839,6 @@
       if (openEl) openEl.textContent = "0";
       if (transEl) transEl.textContent = "0";
       if (diffEl) diffEl.textContent = "0";
-      const subClose = document.getElementById("tallyClosingDateSub");
-      const subOpen = document.getElementById("tallyOpeningDateSub");
-      if (subClose) subClose.textContent = "—";
-      if (subOpen) subOpen.textContent = "—";
       const c = document.getElementById("tallyDetailSectionContainer");
       if (c) c.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
     }
@@ -1738,12 +1854,8 @@
         if (prodEl) prodEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
         return;
       }
-
-      if (activeSalesSubTab === "summary") {
-        renderSalesSummaryCards(selectedDate);
-      } else {
-        renderSalesProductsDetail(selectedDate);
-      }
+      if (activeSalesSubTab === "summary") renderSalesSummaryCards(selectedDate);
+      else renderSalesProductsDetail(selectedDate);
     }
 
     function renderSalesSummaryCards(selectedDate) {
@@ -1756,9 +1868,9 @@
       const ghsData = mRec.ghs || {};
       const baselineMap = (currentYtdBaseline && currentYtdBaseline.baselines) ? currentYtdBaseline.baselines : defaultYtdPrior;
 
-      const selD = parseDateStr(selectedDate);
+      const selD = parseDateToObj(selectedDate);
       const mtdDates = Object.keys(salesData).filter(dStr => {
-        const d = parseDateStr(dStr);
+        const d = parseDateToObj(dStr);
         return d.getMonth() === selD.getMonth() && d.getFullYear() === selD.getFullYear() && d <= selD;
       });
 
@@ -1767,9 +1879,7 @@
         const dayLakhs = (dayItem.value || 0) / 100000;
         let mtdVal = 0;
         mtdDates.forEach(dStr => {
-          if (salesData[dStr] && salesData[dStr][cnt]) {
-            mtdVal += Number(salesData[dStr][cnt].value) || 0;
-          }
+          if (salesData[dStr] && salesData[dStr][cnt]) mtdVal += Number(salesData[dStr][cnt].value) || 0;
         });
         const mtdLakhs = mtdVal / 100000;
         const priorLakhs = Number(baselineMap[cnt] !== undefined ? baselineMap[cnt] : (defaultYtdPrior[cnt] || 0));
@@ -1778,12 +1888,10 @@
       }
 
       const storeMetrics = getMetricsForCounter("STORE");
-
       const dayGhs = ghsData[selectedDate] || { count: 0, value: 0 };
-      let mtdGhsCount = 0;
-      let mtdGgsVal = 0;
+      let mtdGhsCount = 0, mtdGgsVal = 0;
       Object.keys(ghsData).forEach(dStr => {
-        const d = parseDateStr(dStr);
+        const d = parseDateToObj(dStr);
         if (d.getMonth() === selD.getMonth() && d.getFullYear() === selD.getFullYear() && d <= selD) {
           mtdGhsCount += Number(ghsData[dStr].count) || 0;
           mtdGgsVal += Number(ghsData[dStr].value) || 0;
@@ -1793,7 +1901,6 @@
       const mtdGgsLakhs = mtdGgsVal / 100000;
 
       const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
-
       const cardsGrid = document.createElement("div");
       cardsGrid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
 
@@ -1805,230 +1912,440 @@
           <div>
             <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
               <span class="font-bold text-xs tracking-wider uppercase">${cnt} COUNTER</span>
-              <span class="text-[10px] text-amber-400 font-semibold">${selectedDate}</span>
             </div>
             <div class="p-4">
               <table class="w-full text-xs">
-                <thead>
-                  <tr class="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100">
-                    <th class="pb-1.5 text-left">METRIC</th>
-                    <th class="pb-1.5 text-right text-slate-800">COUNTER</th>
-                    <th class="pb-1.5 text-right text-slate-500">STORE</th>
-                  </tr>
-                </thead>
+                <thead><tr class="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100"><th class="pb-1.5 text-left">METRIC</th><th class="pb-1.5 text-right text-slate-800">COUNTER</th><th class="pb-1.5 text-right text-slate-500">STORE</th></tr></thead>
                 <tbody class="divide-y divide-slate-100 font-medium">
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">DAY</td>
-                    <td class="py-1.5 text-right font-extrabold text-slate-900">${cntMetrics.dayLakhs.toFixed(2)}</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.dayLakhs.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">MTD</td>
-                    <td class="py-1.5 text-right font-extrabold text-blue-600">${cntMetrics.mtdLakhs.toFixed(2)}</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.mtdLakhs.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 font-bold text-slate-700">YTD</td>
-                    <td class="py-1.5 text-right font-extrabold text-purple-600">${cntMetrics.ytdLakhs.toFixed(2)}</td>
-                    <td class="py-1.5 text-right text-slate-600">${storeMetrics.ytdLakhs.toFixed(2)}</td>
-                  </tr>
-                  <tr class="bg-slate-50/60">
-                    <td class="py-1.5 font-bold text-amber-800">GHS</td>
-                    <td class="py-1.5 text-right font-bold text-amber-700">${dayGhs.count}</td>
-                    <td class="py-1.5 text-right text-slate-600">${mtdGhsCount}</td>
-                  </tr>
-                  <tr class="bg-slate-50/60">
-                    <td class="py-1.5 font-bold text-amber-800">GGS</td>
-                    <td class="py-1.5 text-right font-bold text-amber-700">${dayGgsLakhs.toFixed(2)}</td>
-                    <td class="py-1.5 text-right text-slate-600">${mtdGgsLakhs.toFixed(2)}</td>
-                  </tr>
+                  <tr><td class="py-1.5 font-bold text-slate-700">DAY</td><td class="py-1.5 text-right font-extrabold text-slate-900">${cntMetrics.dayLakhs.toFixed(2)}</td><td class="py-1.5 text-right text-slate-600">${storeMetrics.dayLakhs.toFixed(2)}</td></tr>
+                  <tr><td class="py-1.5 font-bold text-slate-700">MTD</td><td class="py-1.5 text-right font-extrabold text-blue-600">${cntMetrics.mtdLakhs.toFixed(2)}</td><td class="py-1.5 text-right text-slate-600">${storeMetrics.mtdLakhs.toFixed(2)}</td></tr>
+                  <tr><td class="py-1.5 font-bold text-slate-700">YTD</td><td class="py-1.5 text-right font-extrabold text-purple-600">${cntMetrics.ytdLakhs.toFixed(2)}</td><td class="py-1.5 text-right text-slate-600">${storeMetrics.ytdLakhs.toFixed(2)}</td></tr>
+                  <tr class="bg-slate-50/60"><td class="py-1.5 font-bold text-amber-800">GHS</td><td class="py-1.5 text-right font-bold text-amber-700">${dayGhs.count}</td><td class="py-1.5 text-right text-slate-600">${mtdGhsCount}</td></tr>
+                  <tr class="bg-slate-50/60"><td class="py-1.5 font-bold text-amber-800">GGS</td><td class="py-1.5 text-right font-bold text-amber-700">${dayGgsLakhs.toFixed(2)}</td><td class="py-1.5 text-right text-slate-600">${mtdGgsLakhs.toFixed(2)}</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
-          <div class="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Share of Store:</span>
-            <span class="font-bold text-slate-800">${storeMetrics.dayLakhs > 0 ? ((cntMetrics.dayLakhs / storeMetrics.dayLakhs) * 100).toFixed(1) : 0}%</span>
-          </div>
         `;
         cardsGrid.appendChild(card);
       });
-
       container.appendChild(cardsGrid);
     }
 
-    // New Product Detail (4x2 Matrix, items-start to hug natural height)
     function renderSalesProductsDetail(selectedDate) {
       const container = document.getElementById("salesProductsContainer");
       if (!container) return;
       container.innerHTML = "";
-
       const mRec = currentMonthData || {};
       const salesItemsByDate = mRec.sales_items || {};
       const dateItems = salesItemsByDate[selectedDate] || {};
-
       const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
 
       const topBar = document.createElement("div");
       topBar.className = "flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs mb-4";
-      topBar.innerHTML = `
-        <span class="text-xs font-bold text-slate-800">Sales Product Breakdown for: <b class="text-amber-600">${selectedDate}</b></span>
-        <button onclick="copyAllSalesDetailTables('${selectedDate}')" type="button" class="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-all cursor-pointer">
-          📋 Copy All Product Details for Excel
-        </button>
-      `;
+      topBar.innerHTML = `<span class="text-xs font-bold text-slate-800">Sales Product Breakdown for: <b class="text-amber-600">${selectedDate}</b></span>`;
       container.appendChild(topBar);
 
       const detailGrid = document.createElement("div");
       detailGrid.className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start";
-
       countersToShow.forEach(cnt => {
         const prodDict = dateItems[cnt] || {};
-        const activeProds = Object.keys(prodDict).filter(p => {
-          const item = prodDict[p];
-          return item.soldQty > 0 || item.grnQty > 0;
-        });
-
+        const activeProds = Object.keys(prodDict).filter(p => prodDict[p].soldQty > 0 || prodDict[p].grnQty > 0);
         const section = document.createElement("div");
         section.className = "bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col";
-
         let tbodyHtml = "";
-
         if (activeProds.length === 0) {
-          tbodyHtml = `
-            <tr>
-              <td colspan="4" class="px-3 py-6 text-center text-slate-400 text-xs font-semibold">
-                — NIL SALE RECORDED —
-              </td>
-            </tr>
-          `;
+          tbodyHtml = `<tr><td colspan="4" class="px-3 py-6 text-center text-slate-400 text-xs font-semibold">— NIL SALE RECORDED —</td></tr>`;
         } else {
           activeProds.forEach(prod => {
             const data = prodDict[prod];
-
-            if (data.soldQty > 0) {
-              tbodyHtml += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                  <td class="px-3 py-2 font-bold text-slate-800">${prod}</td>
-                  <td class="px-3 py-2 text-right font-extrabold text-emerald-600">${data.soldQty}</td>
-                  <td class="px-3 py-2 text-right font-medium text-slate-700">${data.soldWt.toFixed(3)}</td>
-                  <td class="px-3 py-2 text-right font-extrabold text-slate-900">${Math.round(data.soldVal).toLocaleString()}</td>
-                </tr>
-              `;
-            }
-
-            if (data.grnQty > 0) {
-              tbodyHtml += `
-                <tr class="bg-rose-50/40 hover:bg-rose-50 transition-colors">
-                  <td class="px-3 py-2 font-bold text-slate-600">${prod}</td>
-                  <td class="px-3 py-2 text-right font-extrabold text-rose-600">-${data.grnQty}</td>
-                  <td class="px-3 py-2 text-right font-medium text-rose-700">-${data.grnWt.toFixed(3)}</td>
-                  <td class="px-3 py-2 text-right font-extrabold text-rose-800">-${Math.round(data.grnVal).toLocaleString()}</td>
-                </tr>
-              `;
-            }
+            if (data.soldQty > 0) tbodyHtml += `<tr class="hover:bg-slate-50"><td class="px-3 py-2 font-bold text-slate-800">${prod}</td><td class="px-3 py-2 text-right font-extrabold text-emerald-600">${data.soldQty}</td><td class="px-3 py-2 text-right font-medium text-slate-700">${data.soldWt.toFixed(3)}</td><td class="px-3 py-2 text-right font-extrabold text-slate-900">${Math.round(data.soldVal).toLocaleString()}</td></tr>`;
+            if (data.grnQty > 0) tbodyHtml += `<tr class="bg-rose-50/40 hover:bg-rose-50"><td class="px-3 py-2 font-bold text-slate-600">${prod}</td><td class="px-3 py-2 text-right font-extrabold text-rose-600">-${data.grnQty}</td><td class="px-3 py-2 text-right font-medium text-rose-700">-${data.grnWt.toFixed(3)}</td><td class="px-3 py-2 text-right font-extrabold text-rose-800">-${Math.round(data.grnVal).toLocaleString()}</td></tr>`;
           });
         }
-
         section.innerHTML = `
-          <div class="px-4 py-3 bg-slate-900 flex items-center justify-between">
-            <span class="font-bold text-xs tracking-wider uppercase text-white">${cnt} COUNTER</span>
-            ${activeProds.length === 0 ? '<span class="text-[10px] font-bold text-slate-400 uppercase bg-slate-800 px-2 py-0.5 rounded">NIL</span>' : ''}
-          </div>
+          <div class="px-4 py-3 bg-slate-900 flex items-center justify-between"><span class="font-bold text-xs tracking-wider uppercase text-white">${cnt} COUNTER</span></div>
           <div class="overflow-x-auto custom-scrollbar flex-1 bg-white">
-            <table class="w-full text-left text-xs" id="tableSalesProd_${cnt}">
-              <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
-                <tr>
-                  <th class="px-3 py-2">Product</th>
-                  <th class="px-3 py-2 text-right">Qnty</th>
-                  <th class="px-3 py-2 text-right">Weight</th>
-                  <th class="px-3 py-2 text-right">Value</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                ${tbodyHtml}
-              </tbody>
-            </table>
+            <table class="w-full text-left text-xs"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">Product</th><th class="px-3 py-2 text-right">Qnty</th><th class="px-3 py-2 text-right">Weight</th><th class="px-3 py-2 text-right">Value</th></tr></thead><tbody class="divide-y divide-slate-100">${tbodyHtml}</tbody></table>
           </div>
         `;
         detailGrid.appendChild(section);
       });
-
       container.appendChild(detailGrid);
     }
 
+    // --- DSR LOGIC ---
+    function getDsrDailyMetrics(rso, dateStr, mRec, dsrConfig) {
+       const numRsos = dsrConfig.rsos.length || 1;
+       const tgt = (dsrConfig.targets[dateStr] || 0) / numRsos;
+       const sales = (mRec.salesRaw || []).filter(s => s.date === dateStr && s.rso === rso);
+       const ghs = (mRec.ghsRaw || []).filter(g => g.enrolDate === dateStr && g.rso === rso);
+
+       let ach = 0, diamond = 0, cs = 0, plain = 0, coins = 0;
+       const docSet = new Set();
+       sales.forEach(s => {
+           ach += s.ucp;
+           const fg = s.finalGroup;
+           if (fg.includes("STUDDED")) diamond += s.ucp;
+           if (fg.includes("COLOR STONES")) cs += s.ucp;
+           if (fg.includes("PLAIN")) plain += s.ucp;
+           if (fg.includes("COIN")) coins += s.ucp;
+           if (s.ucp > 0) docSet.add(s.docNo);
+       });
+       const ghsQty = ghs.length;
+       const ghsValue = ghs.reduce((sum, g) => sum + g.amt, 0);
+       const bills = docSet.size;
+       const np = dsrConfig.np[dateStr]?.[rso] || 0;
+       const walkins = bills + np;
+       const conv = walkins > 0 ? bills / walkins : 0;
+       const beRatio = bills > 0 ? ghsQty / bills : 0;
+       const acm = bills > 0 ? ach / bills : 0;
+       const aev = ghsQty > 0 ? ghsValue / ghsQty : 0;
+       const achPct = tgt > 0 ? ach / tgt : 0;
+       return { tgt, ach, diamond, cs, plain, coins, ghsQty, ghsValue, bills, np, walkins, conv, beRatio, acm, aev, achPct };
+    }
+
+    function getDsrMtdMetrics(rso, dateStr, mRec, dsrConfig) {
+       const mtdDates = getDaysInMonth(mRec.month).filter(d => parseDateToObj(d) <= parseDateToObj(dateStr));
+       const numRsos = dsrConfig.rsos.length || 1;
+       const tgt = mtdDates.reduce((sum, d) => sum + (dsrConfig.targets[d] || 0), 0) / numRsos;
+
+       const sales = (mRec.salesRaw || []).filter(s => mtdDates.includes(s.date) && s.rso === rso);
+       const ghs = (mRec.ghsRaw || []).filter(g => mtdDates.includes(g.enrolDate) && g.rso === rso);
+
+       let ach = 0, diamond = 0, cs = 0, plain = 0, coins = 0;
+       const docSet = new Set();
+       sales.forEach(s => {
+           ach += s.ucp;
+           const fg = s.finalGroup;
+           if (fg.includes("STUDDED")) diamond += s.ucp;
+           if (fg.includes("COLOR STONES")) cs += s.ucp;
+           if (fg.includes("PLAIN")) plain += s.ucp;
+           if (fg.includes("COIN")) coins += s.ucp;
+           if (s.ucp > 0) docSet.add(s.docNo);
+       });
+       const ghsQty = ghs.length;
+       const ghsValue = ghs.reduce((sum, g) => sum + g.amt, 0);
+       const bills = docSet.size;
+       let np = 0;
+       mtdDates.forEach(d => { np += (dsrConfig.np[d]?.[rso] || 0); });
+       const walkins = bills + np;
+       const conv = walkins > 0 ? bills / walkins : 0;
+       const beRatio = bills > 0 ? ghsQty / bills : 0;
+       const acm = bills > 0 ? ach / bills : 0;
+       const aev = ghsQty > 0 ? ghsValue / ghsQty : 0;
+       const achPct = tgt > 0 ? ach / tgt : 0;
+       return { tgt, ach, diamond, cs, plain, coins, ghsQty, ghsValue, bills, np, walkins, conv, beRatio, acm, aev, achPct };
+    }
+
+    function getSub1LakhMetrics(rso, dateStr, mRec, dsrConfig) {
+       const mtdDates = getDaysInMonth(mRec.month).filter(d => parseDateToObj(d) <= parseDateToObj(dateStr));
+       const turnDates = mtdDates.filter(d => dsrConfig.turns[d] === rso);
+       const sales = (mRec.salesRaw || []).filter(s => turnDates.includes(s.date));
+       let qty = 0;
+       const docSet = new Set();
+       sales.forEach(s => {
+           if (s.finalGroup.includes("STUDDED") && s.ucp > 0 && s.ucp <= 100000) qty++;
+           if (s.ucp > 0) docSet.add(s.docNo);
+       });
+       const bills = docSet.size;
+       const ach = bills > 0 ? qty / bills : 0;
+       return { qty, bills, ach };
+    }
+
+    function getCcafMetrics(rso, dateStr, mRec, dsrConfig) {
+       const mtdDates = getDaysInMonth(mRec.month).filter(d => parseDateToObj(d) <= parseDateToObj(dateStr));
+       let csafDone = 0;
+       mtdDates.forEach(d => { csafDone += (dsrConfig.ccaf[d]?.[rso] || 0); });
+       const sales = (mRec.salesRaw || []).filter(s => mtdDates.includes(s.date) && s.rso === rso);
+       const docSet = new Set();
+       sales.forEach(s => { if (s.ucp > 0) docSet.add(s.docNo); });
+       const billsDone = docSet.size;
+       const ach = billsDone > 0 ? csafDone / billsDone : 0;
+       return { csafDone, billsDone, ach };
+    }
+
+    function getPendingSchemeMetrics(rso, dateStr, mRec) {
+       const dObj = parseDateToObj(dateStr);
+       const startOfMonth = new Date(dObj.getFullYear(), dObj.getMonth(), 1);
+       let totalAcc = 0, paid = 0;
+       (mRec.ghsRaw || []).forEach(g => {
+           if (g.currentRso === rso) {
+               const enr = parseDateToObj(g.enrolDate);
+               if (enr < startOfMonth) totalAcc++;
+               const lastInst = parseDateToObj(g.lastInstDate);
+               if (enr <= startOfMonth && lastInst >= startOfMonth && lastInst <= dObj) paid++;
+           }
+       });
+       const yetToPay = totalAcc - paid;
+       const paidPct = totalAcc > 0 ? paid / totalAcc : 0;
+       return { totalAcc, paid, yetToPay, paidPct };
+    }
+
+    function generateSaleReportTable(title, isMtd, dateStr, mRec, dsrConfig) {
+       let html = `<div><div class="px-4 py-2 bg-slate-900 flex items-center justify-between"><span class="font-bold text-xs tracking-wider uppercase text-white">${title}</span></div>
+       <div class="overflow-x-auto bg-white border border-slate-200 shadow-xs"><table class="w-full text-left text-[11px] whitespace-nowrap">`;
+       html += `
+        <thead class="bg-slate-50 text-slate-700 uppercase font-semibold text-[10px]">
+          <tr>
+            <th class="px-3 py-2 border-r border-slate-200" rowspan="2">SL NO</th>
+            <th class="px-3 py-2 border-r border-slate-200" rowspan="2">STAFF NAME</th>
+            <th class="px-3 py-2" rowspan="2">TARGET</th>
+            <th class="px-3 py-2 border-r border-slate-200" rowspan="2">ACHIEVEMENT</th>
+            <th class="px-3 py-2" rowspan="2">DIAMOND</th>
+            <th class="px-3 py-2" rowspan="2">CS</th>
+            <th class="px-3 py-2" rowspan="2">PLAIN</th>
+            <th class="px-3 py-2 border-r border-slate-200" rowspan="2">COINS</th>
+            <th class="px-3 py-2 text-center border-b border-r border-slate-200" colspan="2">GHS/RGA</th>
+            <th class="px-3 py-2" rowspan="2">BILLS</th>
+            <th class="px-3 py-2" rowspan="2">NP</th>
+            <th class="px-3 py-2" rowspan="2">WALKINS</th>
+            <th class="px-3 py-2" rowspan="2">CONVERSION</th>
+            <th class="px-3 py-2" rowspan="2">BE RATIO</th>
+            <th class="px-3 py-2" rowspan="2">ACM</th>
+            <th class="px-3 py-2" rowspan="2">AEV</th>
+            <th class="px-3 py-2" rowspan="2">ACH %</th>
+          </tr>
+          <tr>
+            <th class="px-3 py-1 text-center bg-slate-100 text-[10px]">QTY</th>
+            <th class="px-3 py-1 text-center bg-slate-100 border-r border-slate-200 text-[10px]">VALUE</th>
+          </tr>
+        </thead>
+       <tbody class="divide-y divide-slate-100">`;
+       
+       let tTgt=0, tAch=0, tDia=0, tCs=0, tPlain=0, tCoins=0, tGhsQty=0, tGhsVal=0, tBills=0, tNp=0;
+
+       (dsrConfig.rsos || []).forEach((rso, i) => {
+           const m = isMtd ? getDsrMtdMetrics(rso, dateStr, mRec, dsrConfig) : getDsrDailyMetrics(rso, dateStr, mRec, dsrConfig);
+           tTgt += m.tgt; tAch += m.ach; tDia += m.diamond; tCs += m.cs; tPlain += m.plain; tCoins += m.coins;
+           tGhsQty += m.ghsQty; tGhsVal += m.ghsValue; tBills += m.bills; tNp += m.np;
+
+           html += `<tr class="hover:bg-slate-50">
+              <td class="px-3 py-2 border-r border-slate-100">${i+1}</td>
+              <td class="px-3 py-2 font-bold text-slate-800 border-r border-slate-100">${rso}</td>
+              <td class="px-3 py-2">${Math.round(m.tgt)}</td>
+              <td class="px-3 py-2 text-blue-600 font-bold border-r border-slate-100">${Math.round(m.ach)}</td>
+              <td class="px-3 py-2">${Math.round(m.diamond)}</td>
+              <td class="px-3 py-2">${Math.round(m.cs)}</td>
+              <td class="px-3 py-2">${Math.round(m.plain)}</td>
+              <td class="px-3 py-2 border-r border-slate-100">${Math.round(m.coins)}</td>
+              <td class="px-3 py-2 text-center bg-slate-50/50">${m.ghsQty}</td>
+              <td class="px-3 py-2 text-center bg-slate-50/50 border-r border-slate-100">${Math.round(m.ghsValue)}</td>
+              <td class="px-3 py-2">${m.bills}</td>
+              <td class="px-3 py-2">${m.np}</td>
+              <td class="px-3 py-2 font-bold">${m.walkins}</td>
+              <td class="px-3 py-2">${(m.conv * 100).toFixed(0)}%</td>
+              <td class="px-3 py-2">${m.beRatio.toFixed(2)}</td>
+              <td class="px-3 py-2">${Math.round(m.acm)}</td>
+              <td class="px-3 py-2">${Math.round(m.aev)}</td>
+              <td class="px-3 py-2 font-bold ${m.achPct>=1?'text-emerald-600':'text-rose-500'}">${(m.achPct * 100).toFixed(0)}%</td>
+           </tr>`;
+       });
+
+       const tWalk = tBills + tNp;
+       const tConv = tWalk > 0 ? tBills / tWalk : 0;
+       const tBe = tBills > 0 ? tGhsQty / tBills : 0;
+       const tAcm = tBills > 0 ? tAch / tBills : 0;
+       const tAev = tGhsQty > 0 ? tGhsVal / tGhsQty : 0;
+       const tAchPct = tTgt > 0 ? tAch / tTgt : 0;
+
+       html += `<tr class="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
+          <td colspan="2" class="px-3 py-2 text-right border-r border-slate-200">TOTAL</td>
+          <td class="px-3 py-2">${Math.round(tTgt)}</td>
+          <td class="px-3 py-2 text-blue-700 border-r border-slate-200">${Math.round(tAch)}</td>
+          <td class="px-3 py-2">${Math.round(tDia)}</td>
+          <td class="px-3 py-2">${Math.round(tCs)}</td>
+          <td class="px-3 py-2">${Math.round(tPlain)}</td>
+          <td class="px-3 py-2 border-r border-slate-200">${Math.round(tCoins)}</td>
+          <td class="px-3 py-2 text-center bg-slate-200/50">${tGhsQty}</td>
+          <td class="px-3 py-2 text-center bg-slate-200/50 border-r border-slate-200">${Math.round(tGhsVal)}</td>
+          <td class="px-3 py-2">${tBills}</td>
+          <td class="px-3 py-2">${tNp}</td>
+          <td class="px-3 py-2">${tWalk}</td>
+          <td class="px-3 py-2">${(tConv * 100).toFixed(0)}%</td>
+          <td class="px-3 py-2">${tBe.toFixed(2)}</td>
+          <td class="px-3 py-2">${Math.round(tAcm)}</td>
+          <td class="px-3 py-2">${Math.round(tAev)}</td>
+          <td class="px-3 py-2 ${tAchPct>=1?'text-emerald-700':'text-rose-600'}">${(tAchPct * 100).toFixed(0)}%</td>
+       </tr>`;
+       html += `</tbody></table></div></div>`;
+       return html;
+    }
+
+    function renderDsrDesk() {
+      const selectEl = document.getElementById("dsrDateSelect");
+      if (!selectEl) return;
+      const dateStr = selectEl.value;
+      if (!dateStr) return;
+
+      const mRec = currentMonthData || {};
+      const config = mRec.dsrConfig || { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
+
+      // Sale Report (Daily + MTD)
+      const saleRepContainer = document.getElementById("dsrSaleReport");
+      saleRepContainer.innerHTML = generateSaleReportTable("MAI STAFFWISE - DAILY DATA", false, dateStr, mRec, config) + 
+                                   generateSaleReportTable("MAI STAFFWISE - MTD DATA", true, dateStr, mRec, config);
+
+      // Sub 1 Lakh
+      let sub1Html = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>SUB 1 LAKH ACHIEVEMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">RSO NAME</th><th class="px-3 py-2 text-right">SUB 1 LAC QTY</th><th class="px-3 py-2 text-right">TURN DAY BILLS</th><th class="px-3 py-2 text-right">ACHIEVEMENT</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let sQ=0, sB=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getSub1LakhMetrics(rso, dateStr, mRec, config);
+         sQ+=m.qty; sB+=m.bills;
+         sub1Html += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.qty}</td><td class="px-3 py-2 text-right">${m.bills}</td><td class="px-3 py-2 text-right font-bold ${(m.ach*100)>=5?'text-emerald-600':''}">${(m.ach * 100).toFixed(0)}%</td></tr>`;
+      });
+      sub1Html += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${sQ}</td><td class="px-3 py-2 text-right">${sB}</td><td class="px-3 py-2 text-right">${sB>0?((sQ/sB)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrSub1L").innerHTML = sub1Html;
+
+      // CCAF
+      let ccafHtml = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>CCAF ACHIEVEMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">RSO NAME</th><th class="px-3 py-2 text-right">CSAF DONE</th><th class="px-3 py-2 text-right">BILLS DONE</th><th class="px-3 py-2 text-right">ACHIEVEMENT</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let cC=0, cB=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getCcafMetrics(rso, dateStr, mRec, config);
+         cC+=m.csafDone; cB+=m.billsDone;
+         ccafHtml += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.csafDone}</td><td class="px-3 py-2 text-right">${m.billsDone}</td><td class="px-3 py-2 text-right font-bold">${(m.ach * 100).toFixed(0)}%</td></tr>`;
+      });
+      ccafHtml += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${cC}</td><td class="px-3 py-2 text-right">${cB}</td><td class="px-3 py-2 text-right">${cB>0?((cC/cB)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrCcaf").innerHTML = ccafHtml;
+
+      // Pending Scheme
+      let pendHtml = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>PENDING SCHEME PAYMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">Row Labels (RSO)</th><th class="px-3 py-2 text-right">Total GHSAccounts</th><th class="px-3 py-2 text-right">Sum of Paid</th><th class="px-3 py-2 text-right">Yet to Pay</th><th class="px-3 py-2 text-right">Paid %</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let pT=0, pP=0, pY=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getPendingSchemeMetrics(rso, dateStr, mRec);
+         pT+=m.totalAcc; pP+=m.paid; pY+=m.yetToPay;
+         pendHtml += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.totalAcc}</td><td class="px-3 py-2 text-right text-blue-600 font-semibold">${m.paid}</td><td class="px-3 py-2 text-right text-rose-600 font-semibold">${m.yetToPay}</td><td class="px-3 py-2 text-right font-bold">${(m.paidPct * 100).toFixed(0)}%</td></tr>`;
+      });
+      pendHtml += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${pT}</td><td class="px-3 py-2 text-right text-blue-700">${pP}</td><td class="px-3 py-2 text-right text-rose-700">${pY}</td><td class="px-3 py-2 text-right">${pT>0?((pP/pT)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrPendingScheme").innerHTML = pendHtml;
+    }
+
+    // Modal Handlers
+    function openDsrRsoModal() {
+       const m = currentMonthData.dsrConfig || {};
+       document.getElementById("dsrRsoInput").value = (m.rsos || []).join('\n');
+       document.getElementById("dsrRsoModal").classList.remove("hidden");
+    }
+    async function saveDsrRso() {
+       const lines = document.getElementById("dsrRsoInput").value.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean);
+       currentMonthData.dsrConfig.rsos = lines;
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrRsoModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDsrTargetModal() {
+       const days = getDaysInMonth(currentActiveMonth);
+       let html = '';
+       days.forEach(d => {
+           const val = currentMonthData.dsrConfig.targets[d] || '';
+           html += `<div class="bg-slate-50 border border-slate-200 p-2 rounded flex flex-col"><label class="text-[10px] font-bold text-slate-500 mb-1">${d}</label><input type="number" id="tgt_${d}" value="${val}" class="text-xs px-2 py-1 rounded border border-slate-300 focus:outline-none"></div>`;
+       });
+       document.getElementById("dsrTargetGrid").innerHTML = html;
+       document.getElementById("dsrTargetModal").classList.remove("hidden");
+    }
+    function applyTargetDefaults() {
+       const wkday = document.getElementById("tgtWkday").value;
+       const wkend = document.getElementById("tgtWkend").value;
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+          const dayOfWeek = parseDateToObj(d).getDay();
+          const inp = document.getElementById(`tgt_${d}`);
+          if (inp) {
+              if (dayOfWeek === 0 || dayOfWeek === 6) { if(wkend) inp.value = wkend; }
+              else { if(wkday) inp.value = wkday; }
+          }
+       });
+    }
+    async function saveDsrTargets() {
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+           const inp = document.getElementById(`tgt_${d}`);
+           if (inp) currentMonthData.dsrConfig.targets[d] = Number(inp.value) || 0;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrTargetModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDsrTurnModal() {
+       const days = getDaysInMonth(currentActiveMonth);
+       const rsos = currentMonthData.dsrConfig.rsos || [];
+       let html = '';
+       days.forEach(d => {
+           const val = currentMonthData.dsrConfig.turns[d] || '';
+           let opts = `<option value="">-- Select RSO --</option>`;
+           rsos.forEach(r => opts += `<option value="${r}" ${r===val?'selected':''}>${r}</option>`);
+           html += `<div class="bg-slate-50 border border-slate-200 p-2 rounded flex items-center justify-between"><label class="text-xs font-bold text-slate-700 w-24">${d}</label><select id="trn_${d}" class="text-xs px-2 py-1 rounded border border-slate-300 focus:outline-none flex-1">${opts}</select></div>`;
+       });
+       document.getElementById("dsrTurnGrid").innerHTML = html;
+       document.getElementById("dsrTurnModal").classList.remove("hidden");
+    }
+    async function saveDsrTurns() {
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+           const inp = document.getElementById(`trn_${d}`);
+           if (inp) currentMonthData.dsrConfig.turns[d] = inp.value;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrTurnModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDailyEntryModal(type) {
+       currentDailyEntryType = type;
+       const selectEl = document.getElementById("dsrDateSelect");
+       if (!selectEl) return;
+       const dateStr = selectEl.value;
+       if (!dateStr) return alert("Please select a date first.");
+       document.getElementById("dsrDailyEntryTitle").textContent = `Edit ${type.toUpperCase()} for ${dateStr}`;
+       
+       const rsos = currentMonthData.dsrConfig.rsos || [];
+       let html = '';
+       rsos.forEach(rso => {
+           if (!currentMonthData.dsrConfig[type]) currentMonthData.dsrConfig[type] = {};
+           const val = currentMonthData.dsrConfig[type][dateStr]?.[rso] || 0;
+           html += `<div class="flex justify-between items-center bg-slate-50 border border-slate-200 p-2 rounded"><label class="text-xs font-bold text-slate-700">${rso}</label><input type="number" id="daily_${rso}" value="${val}" class="w-20 text-xs px-2 py-1 border border-slate-300 rounded text-right"></div>`;
+       });
+       document.getElementById("dsrDailyEntryGrid").innerHTML = html;
+       document.getElementById("dsrDailyEntryModal").classList.remove("hidden");
+    }
+    async function saveDailyEntry() {
+       const type = currentDailyEntryType;
+       const dateStr = document.getElementById("dsrDateSelect").value;
+       if (!currentMonthData.dsrConfig[type]) currentMonthData.dsrConfig[type] = {};
+       if (!currentMonthData.dsrConfig[type][dateStr]) currentMonthData.dsrConfig[type][dateStr] = {};
+       
+       (currentMonthData.dsrConfig.rsos || []).forEach(rso => {
+           const inp = document.getElementById(`daily_${rso}`);
+           if (inp) currentMonthData.dsrConfig[type][dateStr][rso] = Number(inp.value) || 0;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrDailyEntryModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
     // --- Excel Copy Handlers ---
-    window.copyTableToExcel = async function(tableId, dateStr, counterName) {
+    window.copyTableToExcel = async function(tableId) {
       const table = document.getElementById(tableId);
       if (!table) return alert("Table not found.");
-
-      let tsvText = `Date: ${dateStr} | Counter: ${counterName}\r\n`;
+      let tsvText = "";
       let htmlTable = `<table border="1">`;
-
       Array.from(table.querySelectorAll("tr")).forEach(r => {
         htmlTable += "<tr>";
-        const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim());
+        const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim().replace(/\s+/g, ' '));
         tsvText += rowCells.join("\t") + "\r\n";
         rowCells.forEach(cellText => { htmlTable += `<td>${cellText}</td>`; });
         htmlTable += "</tr>";
       });
       htmlTable += "</table>";
-
       try {
         if (navigator.clipboard && window.ClipboardItem) {
           await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/plain": new Blob([tsvText], { type: "text/plain" }),
-              "text/html": new Blob([htmlTable], { type: "text/html" })
-            })
+            new ClipboardItem({ "text/plain": new Blob([tsvText], { type: "text/plain" }), "text/html": new Blob([htmlTable], { type: "text/html" }) })
           ]);
-        } else {
-          await navigator.clipboard.writeText(tsvText);
-        }
+        } else await navigator.clipboard.writeText(tsvText);
         alert("Copied table to clipboard! Press Ctrl + V directly inside Microsoft Excel.");
-      } catch (err) {
-        navigator.clipboard.writeText(tsvText).then(() => alert("Copied table as tab-separated values for Excel!"));
-      }
-    };
-
-    window.copyAllSalesDetailTables = async function(dateStr) {
-      const tables = document.querySelectorAll("[id^='tableSalesProd_']");
-      if (!tables || tables.length === 0) return alert("No sales tables to copy.");
-
-      let tsvText = `Sales Product Breakdown | Date: ${dateStr}\r\n\r\n`;
-      let htmlTable = `<table border="1">`;
-
-      tables.forEach(table => {
-        const cntName = table.id.replace("tableSalesProd_", "");
-        const hasRows = Array.from(table.querySelectorAll("tbody tr td")).some(td => td.textContent.includes("NIL SALE") === false);
-        if(!hasRows) return; 
-
-        tsvText += `[${cntName} COUNTER]\r\n`;
-        htmlTable += `<tr><th colspan="4" style="background:#f1f5f9;font-weight:bold;text-align:center;">${cntName} COUNTER</th></tr>`;
-
-        Array.from(table.querySelectorAll("tr")).forEach(r => {
-          htmlTable += "<tr>";
-          const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim());
-          tsvText += rowCells.join("\t") + "\r\n";
-          rowCells.forEach(cellText => { htmlTable += `<td>${cellText}</td>`; });
-          htmlTable += "</tr>";
-        });
-        tsvText += "\r\n";
-      });
-      htmlTable += "</table>";
-
-      try {
-        if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/plain": new Blob([tsvText], { type: "text/plain" }),
-              "text/html": new Blob([htmlTable], { type: "text/html" })
-            })
-          ]);
-        } else {
-          await navigator.clipboard.writeText(tsvText);
-        }
-        alert("Copied all product details! Press Ctrl + V directly inside Microsoft Excel.");
       } catch (err) {
         navigator.clipboard.writeText(tsvText).then(() => alert("Copied table as tab-separated values for Excel!"));
       }
@@ -2043,19 +2360,16 @@
       const container = document.getElementById("manageListContainerDays");
       if (!container) return;
       container.innerHTML = "";
-
       if (!allDayRecords || allDayRecords.length === 0) {
         container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No live stock snapshots uploaded yet.</div>`;
         return;
       }
-
       [...allDayRecords].reverse().forEach(day => {
         const item = document.createElement("div");
         item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
         const resolved = getResolvedDayStock(day.date);
         const hasOpening = !!day.opening;
         const hasClosing = resolved && resolved.closingType !== "none";
-
         const openTime = (day.opening && day.opening.time) ? day.opening.time : 'Morning Dump';
         const openFile = (day.opening && day.opening.fileName) ? `(${day.opening.fileName})` : '';
 
@@ -2063,9 +2377,7 @@
           <div class="space-y-1">
             <div class="flex items-center gap-2">
               <span class="font-bold text-slate-900 text-sm">${day.date}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                hasClosing ? (resolved.closingType === 'temporary' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') : 'bg-blue-100 text-blue-800'
-              }">
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${hasClosing ? (resolved.closingType === 'temporary' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') : 'bg-blue-100 text-blue-800'}">
                 ${hasClosing ? (resolved.closingType === 'temporary' ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
               </span>
             </div>
@@ -2075,14 +2387,8 @@
             </div>
           </div>
           <div class="flex items-center gap-2 self-end md:self-center">
-            ${day.closing ? `
-              <button onclick="handleClearClosing('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors cursor-pointer">
-                Clear Closing
-              </button>
-            ` : ''}
-            <button onclick="handleDeleteDay('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors cursor-pointer">
-              Delete Day
-            </button>
+            ${day.closing ? `<button onclick="handleClearClosing('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors cursor-pointer">Clear Closing</button>` : ''}
+            <button onclick="handleDeleteDay('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors cursor-pointer">Delete Day</button>
           </div>
         `;
         container.appendChild(item);
@@ -2093,19 +2399,15 @@
       const container = document.getElementById("manageListContainerMonths");
       if (!container) return;
       container.innerHTML = "";
-
       const records = await getAllMonthRecords();
       if (!records || records.length === 0) {
         container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No monthly transaction reports uploaded yet.</div>`;
         return;
       }
-
       records.sort((a,b) => b.month.localeCompare(a.month));
-
       records.forEach(m => {
         const item = document.createElement("div");
         item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 shadow-xs";
-
         const hasRec = m.receipts && Object.keys(m.receipts).length > 0;
         const hasGepRec = m.gep_receipts && Object.keys(m.gep_receipts).length > 0;
         const hasTepRec = m.tep_receipts && Object.keys(m.tep_receipts).length > 0;
@@ -2117,52 +2419,17 @@
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
             <div class="flex items-center gap-2">
               <span class="font-bold text-slate-900 text-sm">${m.month}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${m.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">
-                ${m.isArchived ? 'Archived' : 'Active Month'}
-              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${m.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">${m.isArchived ? 'Archived' : 'Active Month'}</span>
             </div>
-            <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 cursor-pointer">
-              Delete Month
-            </button>
+            <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 cursor-pointer">Delete Month</button>
           </div>
-
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px]">
-            <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-blue-900">STM Receipt</span>
-              <div class="mt-2 text-right">
-                ${hasRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
-            <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-amber-900">GEP Receipt</span>
-              <div class="mt-2 text-right">
-                ${hasGepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
-            <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-indigo-900">TEP Receipt</span>
-              <div class="mt-2 text-right">
-                ${hasTepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
-            <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-purple-900">Issues</span>
-              <div class="mt-2 text-right">
-                ${hasIss ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
-            <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-emerald-900">Sales POS</span>
-              <div class="mt-2 text-right">
-                ${hasSale ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
-            <div class="p-2 rounded-lg border ${hasGhs ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
-              <span class="font-bold text-rose-900">GHS Scheme</span>
-              <div class="mt-2 text-right">
-                ${hasGhs ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'ghs')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}
-              </div>
-            </div>
+            <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-blue-900">STM Receipt</span><div class="mt-2 text-right">${hasRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-amber-900">GEP Receipt</span><div class="mt-2 text-right">${hasGepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-indigo-900">TEP Receipt</span><div class="mt-2 text-right">${hasTepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-purple-900">Issues</span><div class="mt-2 text-right">${hasIss ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-emerald-900">Sales POS</span><div class="mt-2 text-right">${hasSale ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasGhs ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-rose-900">GHS Scheme</span><div class="mt-2 text-right">${hasGhs ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'ghs')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
           </div>
         `;
         container.appendChild(item);
@@ -2172,49 +2439,26 @@
     window.handleClearClosing = async function(dateStr) {
       if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
       const rec = await getDayRecord(dateStr);
-      if (rec) {
-        rec.closing = null;
-        rec.isTemporaryClosing = false;
-        await saveDayRecord(rec);
-        await refreshDayList();
-        renderManageList();
-      }
+      if (rec) { rec.closing = null; rec.isTemporaryClosing = false; await saveDayRecord(rec); await refreshDayList(); renderManageList(); }
     };
-
     window.handleDeleteDay = async function(dateStr) {
       if (!confirm(`Delete live stock snapshot for ${dateStr}?`)) return;
-      await deleteDayRecord(dateStr);
-      await refreshDayList();
-      renderManageList();
+      await deleteDayRecord(dateStr); await refreshDayList(); renderManageList();
     };
-
     window.handleDeleteMonthSubReport = async function(monthStr, subKey) {
       if (!confirm(`Delete ${subKey.toUpperCase()} data for ${monthStr}? You can upload it again immediately.`)) return;
       const mRec = await getMonthRecord(monthStr);
       if (mRec) {
-        if (subKey === "sales") {
-          mRec.sales = {};
-          mRec.sales_items = {};
-          mRec.grn = {};
-        } else {
-          mRec[subKey] = {};
-        }
+        if (subKey === "sales") { mRec.sales = {}; mRec.sales_items = {}; mRec.grn = {}; mRec.salesRaw = []; } 
+        else if (subKey === "ghs") { mRec.ghs = {}; mRec.ghsRaw = []; }
+        else mRec[subKey] = {};
         if (mRec.files) delete mRec.files[subKey];
-        await saveMonthRecord(mRec);
-        await refreshMonthDropdown();
-        renderManageList();
-        renderTallyDashboard();
-        renderSalesDesk();
+        await saveMonthRecord(mRec); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
       }
     };
-
     window.handleDeleteEntireMonth = async function(monthStr) {
       if (!confirm(`Delete all transaction reports for ${monthStr}?`)) return;
-      await deleteMonthRecord(monthStr);
-      await refreshMonthDropdown();
-      renderManageList();
-      renderTallyDashboard();
-      renderSalesDesk();
+      await deleteMonthRecord(monthStr); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
     };
 
     function setupEventListeners() {
@@ -2230,7 +2474,6 @@
           if (containerDays) containerDays.classList.remove("hidden");
           if (containerMonths) containerMonths.classList.add("hidden");
         };
-
         tabBtnMonths.onclick = () => {
           tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
           tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
@@ -2260,21 +2503,16 @@
 
       const selTally = document.getElementById("tallyDateSelect");
       const selSales = document.getElementById("salesDateSelect");
-
-      if (selTally) {
-        selTally.onchange = (e) => {
-          if (selSales) selSales.value = e.target.value;
-          renderTallyDashboard();
-          renderSalesDesk();
-        };
-      }
-      if (selSales) {
-        selSales.onchange = (e) => {
-          if (selTally) selTally.value = e.target.value;
-          renderTallyDashboard();
-          renderSalesDesk();
-        };
-      }
+      const selDsr = document.getElementById("dsrDateSelect");
+      const syncRenderAll = (val) => {
+          if (selTally) selTally.value = val;
+          if (selSales) selSales.value = val;
+          if (selDsr) selDsr.value = val;
+          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+      };
+      if (selTally) selTally.onchange = (e) => syncRenderAll(e.target.value);
+      if (selSales) selSales.onchange = (e) => syncRenderAll(e.target.value);
+      if (selDsr) selDsr.onchange = (e) => syncRenderAll(e.target.value);
 
       const chkGross = document.getElementById("chkGrossWeight");
       const chkPre = document.getElementById("chkPreTax");
@@ -2285,15 +2523,13 @@
       if (selDataMonth) {
         selDataMonth.onchange = async (e) => {
           currentActiveMonth = e.target.value;
-          currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
-            month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}
-          };
+          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+          if(!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
           const ytdInp = document.getElementById("ytdTargetMonth");
           if (ytdInp) ytdInp.value = currentActiveMonth;
           await initYtdBaseline();
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          renderSalesDesk();
+          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
         };
       }
 
@@ -2302,8 +2538,7 @@
         btnArchive.onclick = async () => {
           if (!currentMonthData) return;
           currentMonthData.isArchived = !currentMonthData.isArchived;
-          await saveMonthRecord(currentMonthData);
-          await refreshMonthDropdown();
+          await saveMonthRecord(currentMonthData); await refreshMonthDropdown();
           alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
         };
       }
@@ -2311,14 +2546,12 @@
       const btnOpenManage = document.getElementById("btnOpenManage");
       const btnCloseManage = document.getElementById("btnCloseManage");
       const manageModal = document.getElementById("manageModal");
-
       if (btnOpenManage) btnOpenManage.onclick = () => { renderManageList(); if (manageModal) manageModal.classList.remove("hidden"); };
       if (btnCloseManage) btnCloseManage.onclick = () => { if (manageModal) manageModal.classList.add("hidden"); };
 
       const btnOpenYtd = document.getElementById("btnOpenYtdModal");
       const btnCloseYtd = document.getElementById("btnCloseYtdModal");
       const ytdModal = document.getElementById("ytdModal");
-
       if (btnOpenYtd) btnOpenYtd.onclick = () => { if (ytdModal) ytdModal.classList.remove("hidden"); };
       if (btnCloseYtd) btnCloseYtd.onclick = () => { if (ytdModal) ytdModal.classList.add("hidden"); };
 
@@ -2330,7 +2563,6 @@
           const inputs = document.querySelectorAll("[data-ytd-key]");
           const baselines = {};
           inputs.forEach(inp => { baselines[inp.getAttribute("data-ytd-key")] = Number(inp.value) || 0; });
-
           currentYtdBaseline = { month: targetMonth, baselines: baselines };
           await saveYtdBaseline(currentYtdBaseline);
           if (ytdModal) ytdModal.classList.add("hidden");
@@ -2343,11 +2575,7 @@
       if (btnClearAll) {
         btnClearAll.onclick = async () => {
           if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
-            await clearAllData();
-            await refreshDayList();
-            await refreshMonthDropdown();
-            await initYtdBaseline();
-            renderManageList();
+            await clearAllData(); await refreshDayList(); await refreshMonthDropdown(); await initYtdBaseline(); renderManageList();
             if (manageModal) manageModal.classList.add("hidden");
             alert("All historical records cleared.");
           }
@@ -2366,9 +2594,7 @@
           const dl = document.createElement("a");
           dl.setAttribute("href", dataStr);
           dl.setAttribute("download", `store_suite_backup_${new Date().toISOString().slice(0, 10)}.json`);
-          document.body.appendChild(dl);
-          dl.click();
-          dl.remove();
+          document.body.appendChild(dl); dl.click(); dl.remove();
         };
       }
 
@@ -2381,22 +2607,12 @@
           reader.onload = async (evt) => {
             try {
               const parsed = JSON.parse(evt.target.result);
-              if (parsed.days) {
-                for (const item of parsed.days) await saveDayRecord(item);
-              }
-              if (parsed.months) {
-                for (const m of parsed.months) await saveMonthRecord(m);
-              }
-              if (parsed.ytd) {
-                await saveYtdBaseline(parsed.ytd);
-              }
-              await refreshDayList();
-              await refreshMonthDropdown();
-              await initYtdBaseline();
+              if (parsed.days) for (const item of parsed.days) await saveDayRecord(item);
+              if (parsed.months) for (const m of parsed.months) await saveMonthRecord(m);
+              if (parsed.ytd) await saveYtdBaseline(parsed.ytd);
+              await refreshDayList(); await refreshMonthDropdown(); await initYtdBaseline();
               alert("Backup restored successfully!");
-            } catch (err) {
-              alert("Failed to restore backup: " + err.message);
-            }
+            } catch (err) { alert("Failed to restore backup: " + err.message); }
           };
           reader.readAsText(file);
         };
