@@ -1081,14 +1081,16 @@
             const qty = Number(r["Quantity"] || 0);
             const val = Number(r["Total UCP"] || r["Total Invoice Value"] || 0);
             const wt = Number(r["Measured Wt"] || r["Actual Wt"] || r["Gross Wt"] || 0);
-            const dsrName = String(r["DSR NAME"] || "").trim().toUpperCase();
+            
+            // Critical Fix: POS dump uses 'RSO Name', previous macro used 'DSR NAME'. Check for both.
+            const dsrName = String(r["DSR NAME"] || r["RSO Name"] || r["RSO NAME"] || r["RSO"] || r["Staff Name"] || "").trim().toUpperCase();
             
             let fGrp = String(r["Final Group"] || "").trim().toUpperCase();
             if (!fGrp) fGrp = finalGroup.toUpperCase();
 
             rawSales.push({
                date: dateStr,
-               docNo: String(r["Doc No"] || ""),
+               docNo: String(r["Doc No"] || r["Document No"] || r["Bill No"] || ""),
                rso: dsrName,
                ucp: val,
                finalGroup: fGrp
@@ -1986,11 +1988,13 @@
        sales.forEach(s => {
            ach += s.ucp;
            const fg = s.finalGroup;
-           if (fg.includes("STUDDED")) diamond += s.ucp;
-           if (fg.includes("COLOR STONES")) cs += s.ucp;
-           if (fg.includes("PLAIN")) plain += s.ucp;
-           if (fg.includes("COIN")) coins += s.ucp;
-           if (s.ucp > 0) docSet.add(s.docNo);
+           
+           if (fg.includes("COLOR") || fg.includes("CS")) cs += s.ucp;
+           else if (fg.includes("STUDDED") || fg.includes("DIA")) diamond += s.ucp;
+           else if (fg.includes("COIN")) coins += s.ucp;
+           else plain += s.ucp; 
+
+           if (s.ucp > 0 && s.docNo) docSet.add(s.docNo);
        });
        const ghsQty = ghs.length;
        const ghsValue = ghs.reduce((sum, g) => sum + g.amt, 0);
@@ -2018,11 +2022,13 @@
        sales.forEach(s => {
            ach += s.ucp;
            const fg = s.finalGroup;
-           if (fg.includes("STUDDED")) diamond += s.ucp;
-           if (fg.includes("COLOR STONES")) cs += s.ucp;
-           if (fg.includes("PLAIN")) plain += s.ucp;
-           if (fg.includes("COIN")) coins += s.ucp;
-           if (s.ucp > 0) docSet.add(s.docNo);
+           
+           if (fg.includes("COLOR") || fg.includes("CS")) cs += s.ucp;
+           else if (fg.includes("STUDDED") || fg.includes("DIA")) diamond += s.ucp;
+           else if (fg.includes("COIN")) coins += s.ucp;
+           else plain += s.ucp; 
+           
+           if (s.ucp > 0 && s.docNo) docSet.add(s.docNo);
        });
        const ghsQty = ghs.length;
        const ghsValue = ghs.reduce((sum, g) => sum + g.amt, 0);
@@ -2045,8 +2051,8 @@
        let qty = 0;
        const docSet = new Set();
        sales.forEach(s => {
-           if (s.finalGroup.includes("STUDDED") && s.ucp > 0 && s.ucp <= 100000) qty++;
-           if (s.ucp > 0) docSet.add(s.docNo);
+           if ((s.finalGroup.includes("STUDDED") || s.finalGroup.includes("DIA")) && s.ucp > 0 && s.ucp <= 100000) qty++;
+           if (s.ucp > 0 && s.docNo) docSet.add(s.docNo);
        });
        const bills = docSet.size;
        const ach = bills > 0 ? qty / bills : 0;
@@ -2059,7 +2065,7 @@
        mtdDates.forEach(d => { csafDone += (dsrConfig.ccaf[d]?.[rso] || 0); });
        const sales = (mRec.salesRaw || []).filter(s => mtdDates.includes(s.date) && s.rso === rso);
        const docSet = new Set();
-       sales.forEach(s => { if (s.ucp > 0) docSet.add(s.docNo); });
+       sales.forEach(s => { if (s.ucp > 0 && s.docNo) docSet.add(s.docNo); });
        const billsDone = docSet.size;
        const ach = billsDone > 0 ? csafDone / billsDone : 0;
        return { csafDone, billsDone, ach };
