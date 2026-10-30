@@ -645,7 +645,7 @@
     // STATE VARIABLES
     let mapping = { groups: {}, categories: {}, counters: {} };
     const coreCounters = ["EARRING", "CHAIN", "COLOR", "STUDDED", "RING", "WEDDING", "BANGLE", "COIN"];
-    let availableCounters = ["ALL", ...coreCounters, "GEP", "TEP"];
+    let availableCounters = ["ALL", ...coreCounters, "OLD GOLD"];
     let currentTallyCounter = "ALL";
     let currentSalesCounter = "ALL";
     let activeSalesSubTab = "summary";
@@ -655,7 +655,7 @@
     let currentYtdBaseline = null;
     let currentDailyEntryType = "ccaf";
 
-    const defaultYtdPrior = { "EARRING": 82.66, "CHAIN": 320.34, "COLOR": 29.41, "STUDDED": 288.81, "RING": 72.14, "WEDDING": 80.13, "BANGLE": 146.74, "COIN": 17.70, "GEP": 0.00, "TEP": 0.00, "STORE": 1037.94 };
+    const defaultYtdPrior = { "EARRING": 82.66, "CHAIN": 320.34, "COLOR": 29.41, "STUDDED": 288.81, "RING": 72.14, "WEDDING": 80.13, "BANGLE": 146.74, "COIN": 17.70, "OLD GOLD": 0.00, "STORE": 1037.94 };
 
     function getSafeQty(catData) {
       if (!catData) return 0;
@@ -712,8 +712,12 @@
 
     function resolveCounter(origGroup, origCat, binCode) {
       const cleanBin = String(binCode || "").trim().toUpperCase();
-      if (cleanBin === "GEP") return { counter: "GEP", finalGroup: "GEP", finalCat: "GEP" };
-      if (cleanBin === "TEP") return { counter: "TEP", finalGroup: "TEP", finalCat: "TEP" };
+      
+      // Combine GEP, TEP, and Cutpiece into OLD GOLD
+      if (cleanBin === "GEP" || cleanBin === "TEP" || cleanBin.includes("CUTPIECE") || cleanBin.includes("CUT PIECE")) { 
+        return { counter: "OLD GOLD", finalGroup: "OLD GOLD", finalCat: cleanBin }; 
+      }
+      
       let finalGroup = mapping.groups[origGroup] || origGroup || "Gold Plain";
       const finalCat = mapping.categories[origCat] || origCat || "OTHERS";
       const combined = finalGroup + finalCat;
@@ -825,8 +829,7 @@
             mapping.counters[combined] = counter;
             counterSet.add(counter);
           });
-          counterSet.add("GEP");
-          counterSet.add("TEP");
+          counterSet.add("OLD GOLD"); // Replaced GEP and TEP
           availableCounters = Array.from(counterSet);
         }
 
@@ -1293,32 +1296,37 @@
       reader.readAsArrayBuffer(file);
     }
 
-    async function processGepOrTepReceiptFile(file, counterKey) {
+    async function processGepOrTepReceiptFile(file, typeKey) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const rows = parseReportWithHeaderAtRow2(wb);
           const receiptsByDate = {};
+          const counterKey = "OLD GOLD";
+          
           rows.forEach(r => {
             const status = String(r["Status"] || "").trim().toUpperCase();
             if (status && status !== "CONFIRMED" && status !== "ACTIVE") return;
             const dateStr = normalizeDate(r["DATE"] || r["Doc Date"]);
             if (!dateStr) return;
             const qty = Number(r["QUANTITY"] || r["Quantity"] || 1);
+            
             if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
             if (!receiptsByDate[dateStr][counterKey]) receiptsByDate[dateStr][counterKey] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
+            
             receiptsByDate[dateStr][counterKey].qty += qty;
-            receiptsByDate[dateStr][counterKey].categories[counterKey] = (receiptsByDate[dateStr][counterKey].categories[counterKey] || 0) + qty;
+            receiptsByDate[dateStr][counterKey].categories[typeKey] = (receiptsByDate[dateStr][counterKey].categories[typeKey] || 0) + qty;
             receiptsByDate[dateStr]["ALL"].qty += qty;
             receiptsByDate[dateStr]["ALL"].categories[counterKey] = (receiptsByDate[dateStr]["ALL"].categories[counterKey] || 0) + qty;
           });
-          const subField = counterKey === "GEP" ? "gep_receipts" : "tep_receipts";
+          
+          const subField = typeKey === "GEP" ? "gep_receipts" : "tep_receipts";
           await updateMonthlyData(subField, receiptsByDate, file.name);
           renderTallyDashboard();
-          alert(`Updated ${counterKey} Receipts for ${currentActiveMonth}!`);
-        } catch (err) { alert(`Error parsing ${counterKey} Receipt report.`); }
+          alert(`Updated ${typeKey} Receipts for ${currentActiveMonth}!`);
+        } catch (err) { alert(`Error parsing ${typeKey} Receipt report.`); }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -1700,7 +1708,7 @@
 
       const sectionTitle = currentTallyCounter === "BANGLE" 
         ? "Bangles Reconciliation by Set" 
-        : (currentTallyCounter === "GEP" || currentTallyCounter === "TEP" ? `${currentTallyCounter} Reconciliation` : "Counter Category Reconciliation Table");
+        : (currentTallyCounter === "OLD GOLD" ? `OLD GOLD Reconciliation` : "Counter Category Reconciliation Table");
 
       let rowsHtml = "";
       if (allCatKeys.length === 0) {
@@ -1752,7 +1760,7 @@
             <table class="w-full text-left text-xs" id="tallyReconcileTable">
               <thead class="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
                 <tr>
-                  <th class="px-4 py-3">${currentTallyCounter === "BANGLE" ? "Bangle Set" : (currentTallyCounter === "GEP" || currentTallyCounter === "TEP" ? "Counter Group" : "Category")}</th>
+                  <th class="px-4 py-3">${currentTallyCounter === "BANGLE" ? "Bangle Set" : (currentTallyCounter === "OLD GOLD" ? "Counter Group" : "Category")}</th>
                   <th class="px-3 py-3 text-right">Opening</th>
                   <th class="px-3 py-3 text-right text-blue-700">+Rec</th>
                   <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
