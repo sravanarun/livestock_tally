@@ -2199,3 +2199,444 @@
 
       const mRec = currentMonthData || {};
       const config = mRec.dsrConfig || { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
+
+      // Sale Report (Daily + MTD)
+      const saleRepContainer = document.getElementById("dsrSaleReport");
+      saleRepContainer.innerHTML = generateSaleReportTable("MAI STAFFWISE - DAILY DATA", false, dateStr, mRec, config) + 
+                                   generateSaleReportTable("MAI STAFFWISE - MTD DATA", true, dateStr, mRec, config);
+
+      // Sub 1 Lakh
+      let sub1Html = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>SUB 1 LAKH ACHIEVEMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">RSO NAME</th><th class="px-3 py-2 text-right">SUB 1 LAC QTY</th><th class="px-3 py-2 text-right">TURN DAY BILLS</th><th class="px-3 py-2 text-right">ACHIEVEMENT</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let sQ=0, sB=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getSub1LakhMetrics(rso, dateStr, mRec, config);
+         sQ+=m.qty; sB+=m.bills;
+         sub1Html += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.qty}</td><td class="px-3 py-2 text-right">${m.bills}</td><td class="px-3 py-2 text-right font-bold ${(m.ach*100)>=5?'text-emerald-600':''}">${(m.ach * 100).toFixed(0)}%</td></tr>`;
+      });
+      sub1Html += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${sQ}</td><td class="px-3 py-2 text-right">${sB}</td><td class="px-3 py-2 text-right">${sB>0?((sQ/sB)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrSub1L").innerHTML = sub1Html;
+
+      // CCAF
+      let ccafHtml = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>CCAF ACHIEVEMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">RSO NAME</th><th class="px-3 py-2 text-right">CSAF DONE</th><th class="px-3 py-2 text-right">BILLS DONE</th><th class="px-3 py-2 text-right">ACHIEVEMENT</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let cC=0, cB=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getCcafMetrics(rso, dateStr, mRec, config);
+         cC+=m.csafDone; cB+=m.billsDone;
+         ccafHtml += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.csafDone}</td><td class="px-3 py-2 text-right">${m.billsDone}</td><td class="px-3 py-2 text-right font-bold">${(m.ach * 100).toFixed(0)}%</td></tr>`;
+      });
+      ccafHtml += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${cC}</td><td class="px-3 py-2 text-right">${cB}</td><td class="px-3 py-2 text-right">${cB>0?((cC/cB)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrCcaf").innerHTML = ccafHtml;
+
+      // Pending Scheme
+      let pendHtml = `<div class="px-4 py-2 bg-slate-800 flex justify-between text-white text-xs font-bold tracking-wider uppercase"><span>PENDING SCHEME PAYMENT</span></div>
+                      <div class="overflow-x-auto"><table class="w-full text-left text-[11px] whitespace-nowrap"><thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200"><tr><th class="px-3 py-2">SL NO</th><th class="px-3 py-2">Row Labels (RSO)</th><th class="px-3 py-2 text-right">Total GHSAccounts</th><th class="px-3 py-2 text-right">Sum of Paid</th><th class="px-3 py-2 text-right">Yet to Pay</th><th class="px-3 py-2 text-right">Paid %</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+      let pT=0, pP=0, pY=0;
+      (config.rsos || []).forEach((rso, i) => {
+         const m = getPendingSchemeMetrics(rso, dateStr, mRec);
+         pT+=m.totalAcc; pP+=m.paid; pY+=m.yetToPay;
+         pendHtml += `<tr class="hover:bg-slate-50"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 font-bold">${rso}</td><td class="px-3 py-2 text-right">${m.totalAcc}</td><td class="px-3 py-2 text-right text-blue-600 font-semibold">${m.paid}</td><td class="px-3 py-2 text-right text-rose-600 font-semibold">${m.yetToPay}</td><td class="px-3 py-2 text-right font-bold">${(m.paidPct * 100).toFixed(0)}%</td></tr>`;
+      });
+      pendHtml += `<tr class="bg-slate-100 font-extrabold"><td colspan="2" class="px-3 py-2 text-right">TOTAL</td><td class="px-3 py-2 text-right">${pT}</td><td class="px-3 py-2 text-right text-blue-700">${pP}</td><td class="px-3 py-2 text-right text-rose-700">${pY}</td><td class="px-3 py-2 text-right">${pT>0?((pP/pT)*100).toFixed(0):0}%</td></tr></tbody></table></div>`;
+      document.getElementById("dsrPendingScheme").innerHTML = pendHtml;
+    }
+
+    // Modal Handlers
+    function openDsrRsoModal() {
+       const m = currentMonthData.dsrConfig || {};
+       document.getElementById("dsrRsoInput").value = (m.rsos || []).join('\n');
+       document.getElementById("dsrRsoModal").classList.remove("hidden");
+    }
+    async function saveDsrRso() {
+       const lines = document.getElementById("dsrRsoInput").value.split('\n').map(s=>s.trim().toUpperCase()).filter(Boolean);
+       currentMonthData.dsrConfig.rsos = lines;
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrRsoModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDsrTargetModal() {
+       const days = getDaysInMonth(currentActiveMonth);
+       let html = '';
+       days.forEach(d => {
+           const val = currentMonthData.dsrConfig.targets[d] || '';
+           html += `<div class="bg-slate-50 border border-slate-200 p-2 rounded flex flex-col"><label class="text-[10px] font-bold text-slate-500 mb-1">${d}</label><input type="number" id="tgt_${d}" value="${val}" class="text-xs px-2 py-1 rounded border border-slate-300 focus:outline-none"></div>`;
+       });
+       document.getElementById("dsrTargetGrid").innerHTML = html;
+       document.getElementById("dsrTargetModal").classList.remove("hidden");
+    }
+    function applyTargetDefaults() {
+       const wkday = document.getElementById("tgtWkday").value;
+       const wkend = document.getElementById("tgtWkend").value;
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+          const dayOfWeek = parseDateToObj(d).getDay();
+          const inp = document.getElementById(`tgt_${d}`);
+          if (inp) {
+              if (dayOfWeek === 0 || dayOfWeek === 6) { if(wkend) inp.value = wkend; }
+              else { if(wkday) inp.value = wkday; }
+          }
+       });
+    }
+    async function saveDsrTargets() {
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+           const inp = document.getElementById(`tgt_${d}`);
+           if (inp) currentMonthData.dsrConfig.targets[d] = Number(inp.value) || 0;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrTargetModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDsrTurnModal() {
+       const days = getDaysInMonth(currentActiveMonth);
+       const rsos = currentMonthData.dsrConfig.rsos || [];
+       let html = '';
+       days.forEach(d => {
+           const val = currentMonthData.dsrConfig.turns[d] || '';
+           let opts = `<option value="">-- Select RSO --</option>`;
+           rsos.forEach(r => opts += `<option value="${r}" ${r===val?'selected':''}>${r}</option>`);
+           html += `<div class="bg-slate-50 border border-slate-200 p-2 rounded flex items-center justify-between"><label class="text-xs font-bold text-slate-700 w-24">${d}</label><select id="trn_${d}" class="text-xs px-2 py-1 rounded border border-slate-300 focus:outline-none flex-1">${opts}</select></div>`;
+       });
+       document.getElementById("dsrTurnGrid").innerHTML = html;
+       document.getElementById("dsrTurnModal").classList.remove("hidden");
+    }
+    async function saveDsrTurns() {
+       getDaysInMonth(currentActiveMonth).forEach(d => {
+           const inp = document.getElementById(`trn_${d}`);
+           if (inp) currentMonthData.dsrConfig.turns[d] = inp.value;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrTurnModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    function openDailyEntryModal(type) {
+       currentDailyEntryType = type;
+       const selectEl = document.getElementById("dsrDateSelect");
+       if (!selectEl) return;
+       const dateStr = selectEl.value;
+       if (!dateStr) return alert("Please select a date first.");
+       document.getElementById("dsrDailyEntryTitle").textContent = `Edit ${type.toUpperCase()} for ${dateStr}`;
+       
+       const rsos = currentMonthData.dsrConfig.rsos || [];
+       let html = '';
+       rsos.forEach(rso => {
+           if (!currentMonthData.dsrConfig[type]) currentMonthData.dsrConfig[type] = {};
+           const val = currentMonthData.dsrConfig[type][dateStr]?.[rso] || 0;
+           html += `<div class="flex justify-between items-center bg-slate-50 border border-slate-200 p-2 rounded"><label class="text-xs font-bold text-slate-700">${rso}</label><input type="number" id="daily_${rso}" value="${val}" class="w-20 text-xs px-2 py-1 border border-slate-300 rounded text-right"></div>`;
+       });
+       document.getElementById("dsrDailyEntryGrid").innerHTML = html;
+       document.getElementById("dsrDailyEntryModal").classList.remove("hidden");
+    }
+    async function saveDailyEntry() {
+       const type = currentDailyEntryType;
+       const dateStr = document.getElementById("dsrDateSelect").value;
+       if (!currentMonthData.dsrConfig[type]) currentMonthData.dsrConfig[type] = {};
+       if (!currentMonthData.dsrConfig[type][dateStr]) currentMonthData.dsrConfig[type][dateStr] = {};
+       
+       (currentMonthData.dsrConfig.rsos || []).forEach(rso => {
+           const inp = document.getElementById(`daily_${rso}`);
+           if (inp) currentMonthData.dsrConfig[type][dateStr][rso] = Number(inp.value) || 0;
+       });
+       await saveMonthRecord(currentMonthData);
+       document.getElementById("dsrDailyEntryModal").classList.add("hidden");
+       renderDsrDesk();
+    }
+
+    // --- Excel Copy Handlers ---
+    window.copyTableToExcel = async function(tableId) {
+      const table = document.getElementById(tableId);
+      if (!table) return alert("Table not found.");
+      let tsvText = "";
+      let htmlTable = `<table border="1">`;
+      Array.from(table.querySelectorAll("tr")).forEach(r => {
+        htmlTable += "<tr>";
+        const rowCells = Array.from(r.querySelectorAll("th, td")).map(c => c.textContent.trim().replace(/\s+/g, ' '));
+        tsvText += rowCells.join("\t") + "\r\n";
+        rowCells.forEach(cellText => { htmlTable += `<td>${cellText}</td>`; });
+        htmlTable += "</tr>";
+      });
+      htmlTable += "</table>";
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "text/plain": new Blob([tsvText], { type: "text/plain" }), "text/html": new Blob([htmlTable], { type: "text/html" }) })
+          ]);
+        } else await navigator.clipboard.writeText(tsvText);
+        alert("Copied table to clipboard! Press Ctrl + V directly inside Microsoft Excel.");
+      } catch (err) {
+        navigator.clipboard.writeText(tsvText).then(() => alert("Copied table as tab-separated values for Excel!"));
+      }
+    };
+
+    function renderManageList() {
+      renderManageDaysList();
+      renderManageMonthsList();
+    }
+
+    function renderManageDaysList() {
+      const container = document.getElementById("manageListContainerDays");
+      if (!container) return;
+      container.innerHTML = "";
+      if (!allDayRecords || allDayRecords.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No live stock snapshots uploaded yet.</div>`;
+        return;
+      }
+      [...allDayRecords].reverse().forEach(day => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs";
+        const resolved = getResolvedDayStock(day.date);
+        const hasOpening = !!day.opening;
+        const hasClosing = resolved && resolved.closingType !== "none";
+        const openTime = (day.opening && day.opening.time) ? day.opening.time : 'Morning Dump';
+        const openFile = (day.opening && day.opening.fileName) ? `(${day.opening.fileName})` : '';
+
+        item.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${day.date}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${hasClosing ? (resolved.closingType === 'temporary' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800') : 'bg-blue-100 text-blue-800'}">
+                ${hasClosing ? (resolved.closingType === 'temporary' ? 'Temporary Closing' : 'Closed & Finalized') : 'Opening Only'}
+              </span>
+            </div>
+            <div class="text-xs text-slate-500 space-y-0.5">
+              <p>🌅 Opening: <span class="text-slate-700">${hasOpening ? `${openTime}${openFile}` : 'None'}</span></p>
+              <p>🌙 Closing: <span class="text-slate-700">${hasClosing ? resolved.closingTimeLabel : (resolved ? resolved.closingTimeLabel : 'Pending')}</span></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 self-end md:self-center">
+            ${day.closing ? `<button onclick="handleClearClosing('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-amber-700 hover:text-amber-800 rounded-lg border border-slate-200 transition-colors cursor-pointer">Clear Closing</button>` : ''}
+            <button onclick="handleDeleteDay('${day.date}')" type="button" class="text-xs font-semibold px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 text-rose-600 hover:text-rose-700 rounded-lg border border-slate-200 transition-colors cursor-pointer">Delete Day</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function renderManageMonthsList() {
+      const container = document.getElementById("manageListContainerMonths");
+      if (!container) return;
+      container.innerHTML = "";
+      const records = await getAllMonthRecords();
+      if (!records || records.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No monthly transaction reports uploaded yet.</div>`;
+        return;
+      }
+      records.sort((a,b) => b.month.localeCompare(a.month));
+      records.forEach(m => {
+        const item = document.createElement("div");
+        item.className = "border border-slate-200 rounded-xl p-4 bg-white flex flex-col gap-3 shadow-xs";
+        const hasRec = m.receipts && Object.keys(m.receipts).length > 0;
+        const hasGepRec = m.gep_receipts && Object.keys(m.gep_receipts).length > 0;
+        const hasTepRec = m.tep_receipts && Object.keys(m.tep_receipts).length > 0;
+        const hasIss = m.issues && Object.keys(m.issues).length > 0;
+        const hasSale = m.sales && Object.keys(m.sales).length > 0;
+        const hasGhs = m.ghs && Object.keys(m.ghs).length > 0;
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-900 text-sm">${m.month}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${m.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">${m.isArchived ? 'Archived' : 'Active Month'}</span>
+            </div>
+            <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 cursor-pointer">Delete Month</button>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px]">
+            <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-blue-900">STM Receipt</span><div class="mt-2 text-right">${hasRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-amber-900">GEP Receipt</span><div class="mt-2 text-right">${hasGepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-indigo-900">TEP Receipt</span><div class="mt-2 text-right">${hasTepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-purple-900">Issues</span><div class="mt-2 text-right">${hasIss ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-emerald-900">Sales POS</span><div class="mt-2 text-right">${hasSale ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasGhs ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-rose-900">GHS Scheme</span><div class="mt-2 text-right">${hasGhs ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'ghs')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    window.handleClearClosing = async function(dateStr) {
+      if (!confirm(`Remove temporary closing for ${dateStr}?`)) return;
+      const rec = await getDayRecord(dateStr);
+      if (rec) { rec.closing = null; rec.isTemporaryClosing = false; await saveDayRecord(rec); await refreshDayList(); renderManageList(); }
+    };
+    window.handleDeleteDay = async function(dateStr) {
+      if (!confirm(`Delete live stock snapshot for ${dateStr}?`)) return;
+      await deleteDayRecord(dateStr); await refreshDayList(); renderManageList();
+    };
+    window.handleDeleteMonthSubReport = async function(monthStr, subKey) {
+      if (!confirm(`Delete ${subKey.toUpperCase()} data for ${monthStr}? You can upload it again immediately.`)) return;
+      const mRec = await getMonthRecord(monthStr);
+      if (mRec) {
+        if (subKey === "sales") { mRec.sales = {}; mRec.sales_items = {}; mRec.grn = {}; mRec.salesRaw = []; } 
+        else if (subKey === "ghs") { mRec.ghs = {}; mRec.ghsRaw = []; }
+        else mRec[subKey] = {};
+        if (mRec.files) delete mRec.files[subKey];
+        await saveMonthRecord(mRec); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+      }
+    };
+    window.handleDeleteEntireMonth = async function(monthStr) {
+      if (!confirm(`Delete all transaction reports for ${monthStr}?`)) return;
+      await deleteMonthRecord(monthStr); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+    };
+
+    function setupEventListeners() {
+      const tabBtnDays = document.getElementById("tabBtnDays");
+      const tabBtnMonths = document.getElementById("tabBtnMonths");
+      const containerDays = document.getElementById("manageListContainerDays");
+      const containerMonths = document.getElementById("manageListContainerMonths");
+
+      if (tabBtnDays && tabBtnMonths) {
+        tabBtnDays.onclick = () => {
+          tabBtnDays.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+          tabBtnMonths.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+          if (containerDays) containerDays.classList.remove("hidden");
+          if (containerMonths) containerMonths.classList.add("hidden");
+        };
+        tabBtnMonths.onclick = () => {
+          tabBtnMonths.className = "pb-2.5 px-4 text-xs font-bold border-b-2 border-amber-500 text-amber-700 cursor-pointer transition-all";
+          tabBtnDays.className = "pb-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer transition-all";
+          if (containerMonths) containerMonths.classList.remove("hidden");
+          if (containerDays) containerDays.classList.add("hidden");
+          renderManageMonthsList();
+        };
+      }
+
+      const bindDrop = (dropId, fileId, handler) => {
+        const drop = document.getElementById(dropId);
+        const file = document.getElementById(fileId);
+        if (!drop || !file) return;
+        file.onchange = (e) => { if (e.target.files.length > 0) handler(e.target.files[0]); };
+        drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("border-amber-500", "bg-amber-100/50"); };
+        drop.ondragleave = () => { drop.classList.remove("border-amber-500", "bg-amber-100/50"); };
+        drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("border-amber-500", "bg-amber-100/50"); if (e.dataTransfer.files.length > 0) handler(e.dataTransfer.files[0]); };
+      };
+
+      bindDrop("dropAreaLive", "fileLive", processLiveStockFile);
+      bindDrop("dropAreaSales", "fileSales", processSalesFile);
+      bindDrop("dropAreaReceipt", "fileReceipt", processReceiptFile);
+      bindDrop("dropAreaIssue", "fileIssue", processIssueFile);
+      bindDrop("dropAreaGepReceipt", "fileGepReceipt", (f) => processGepOrTepReceiptFile(f, "GEP"));
+      bindDrop("dropAreaTepReceipt", "fileTepReceipt", (f) => processGepOrTepReceiptFile(f, "TEP"));
+      bindDrop("dropAreaGhs", "fileGhs", processGhsFile);
+
+      const selTally = document.getElementById("tallyDateSelect");
+      const selSales = document.getElementById("salesDateSelect");
+      const selDsr = document.getElementById("dsrDateSelect");
+      const syncRenderAll = (val) => {
+          if (selTally) selTally.value = val;
+          if (selSales) selSales.value = val;
+          if (selDsr) selDsr.value = val;
+          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+      };
+      if (selTally) selTally.onchange = (e) => syncRenderAll(e.target.value);
+      if (selSales) selSales.onchange = (e) => syncRenderAll(e.target.value);
+      if (selDsr) selDsr.onchange = (e) => syncRenderAll(e.target.value);
+
+      const chkGross = document.getElementById("chkGrossWeight");
+      const chkPre = document.getElementById("chkPreTax");
+      if (chkGross) chkGross.onchange = renderTallyDashboard;
+      if (chkPre) chkPre.onchange = renderTallyDashboard;
+
+      const selDataMonth = document.getElementById("dataCenterMonthSelect");
+      if (selDataMonth) {
+        selDataMonth.onchange = async (e) => {
+          currentActiveMonth = e.target.value;
+          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+          if(!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
+          const ytdInp = document.getElementById("ytdTargetMonth");
+          if (ytdInp) ytdInp.value = currentActiveMonth;
+          await initYtdBaseline();
+          updateUploadCardsStatus();
+          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+        };
+      }
+
+      const btnArchive = document.getElementById("btnArchiveMonth");
+      if (btnArchive) {
+        btnArchive.onclick = async () => {
+          if (!currentMonthData) return;
+          currentMonthData.isArchived = !currentMonthData.isArchived;
+          await saveMonthRecord(currentMonthData); await refreshMonthDropdown();
+          alert(currentMonthData.isArchived ? `Month ${currentActiveMonth} has been LOCKED & ARCHIVED.` : `Month ${currentActiveMonth} UNLOCKED.`);
+        };
+      }
+
+      const btnOpenManage = document.getElementById("btnOpenManage");
+      const btnCloseManage = document.getElementById("btnCloseManage");
+      const manageModal = document.getElementById("manageModal");
+      if (btnOpenManage) btnOpenManage.onclick = () => { renderManageList(); if (manageModal) manageModal.classList.remove("hidden"); };
+      if (btnCloseManage) btnCloseManage.onclick = () => { if (manageModal) manageModal.classList.add("hidden"); };
+
+      const btnOpenYtd = document.getElementById("btnOpenYtdModal");
+      const btnCloseYtd = document.getElementById("btnCloseYtdModal");
+      const ytdModal = document.getElementById("ytdModal");
+      if (btnOpenYtd) btnOpenYtd.onclick = () => { if (ytdModal) ytdModal.classList.remove("hidden"); };
+      if (btnCloseYtd) btnCloseYtd.onclick = () => { if (ytdModal) ytdModal.classList.add("hidden"); };
+
+      const btnSaveYtd = document.getElementById("btnSaveYtdBaseline");
+      if (btnSaveYtd) {
+        btnSaveYtd.onclick = async () => {
+          const ytdInp = document.getElementById("ytdTargetMonth");
+          const targetMonth = (ytdInp ? ytdInp.value.trim() : "") || currentActiveMonth;
+          const inputs = document.querySelectorAll("[data-ytd-key]");
+          const baselines = {};
+          inputs.forEach(inp => { baselines[inp.getAttribute("data-ytd-key")] = Number(inp.value) || 0; });
+          currentYtdBaseline = { month: targetMonth, baselines: baselines };
+          await saveYtdBaseline(currentYtdBaseline);
+          if (ytdModal) ytdModal.classList.add("hidden");
+          renderSalesDesk();
+          alert(`Successfully saved YTD baseline for ${targetMonth}!`);
+        };
+      }
+
+      const btnClearAll = document.getElementById("btnClearAll");
+      if (btnClearAll) {
+        btnClearAll.onclick = async () => {
+          if (confirm("WARNING: This will permanently wipe all uploaded live stock and transaction reports from this browser. Proceed?")) {
+            await clearAllData(); await refreshDayList(); await refreshMonthDropdown(); await initYtdBaseline(); renderManageList();
+            if (manageModal) manageModal.classList.add("hidden");
+            alert("All historical records cleared.");
+          }
+        };
+      }
+
+      const btnBackup = document.getElementById("btnBackup");
+      if (btnBackup) {
+        btnBackup.onclick = async () => {
+          const days = await getAllDayRecords();
+          const months = await getAllMonthRecords();
+          const ytd = currentYtdBaseline;
+          if (days.length === 0 && months.length === 0) return alert("No history to backup.");
+          const exportData = { days, months, ytd, exportDate: new Date().toISOString() };
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+          const dl = document.createElement("a");
+          dl.setAttribute("href", dataStr);
+          dl.setAttribute("download", `store_suite_backup_${new Date().toISOString().slice(0, 10)}.json`);
+          document.body.appendChild(dl); dl.click(); dl.remove();
+        };
+      }
+
+      const restoreInput = document.getElementById("restoreInput");
+      if (restoreInput) {
+        restoreInput.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            try {
+              const parsed = JSON.parse(evt.target.result);
+              if (parsed.days) for (const item of parsed.days) await saveDayRecord(item);
+              if (parsed.months) for (const m of parsed.months) await saveMonthRecord(m);
+              if (parsed.ytd) await saveYtdBaseline(parsed.ytd);
+              await refreshDayList(); await refreshMonthDropdown(); await initYtdBaseline();
+              alert("Backup restored successfully!");
+            } catch (err) { alert("Failed to restore backup: " + err.message); }
+          };
+          reader.readAsText(file);
+        };
+      }
+    }
+  </script>
+</body>
+</html>
