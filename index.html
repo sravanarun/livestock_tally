@@ -559,7 +559,7 @@
 
   <script>
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 11; // Forced database wipe to clear old cache automatically
+    const DB_VERSION = 12; // Forced database wipe to clear old cache automatically
     let db;
 
     function openDatabase() {
@@ -1325,15 +1325,40 @@
       reader.onload = async (e) => {
         try {
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
-          const rows = parseReportWithHeaderAtRow2(wb);
+          
+          // Use a flexible parser just in case the Cutpiece header is pushed down a row
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          let headerIdx = 1; // Default to row 2
+          for (let i = 0; i < Math.min(5, rawRows.length); i++) {
+            if (rawRows[i] && rawRows[i].some(cell => {
+               const str = String(cell).toLowerCase();
+               return str.includes("date") || str.includes("qty") || str.includes("quantity") || str.includes("btq code");
+            })) {
+              headerIdx = i;
+              break;
+            }
+          }
+          const headers = (rawRows[headerIdx] || []).map(h => String(h || "").trim());
+          const rows = [];
+          for (let r = headerIdx + 1; r < rawRows.length; r++) {
+            const rowObj = {};
+            headers.forEach((h, idx) => { if (h) rowObj[h] = rawRows[r][idx]; });
+            rows.push(rowObj);
+          }
+
           const receiptsByDate = {};
           const counterKey = "OLD GOLD";
+          let totalProcessed = 0;
           
           rows.forEach(r => {
             const status = String(r["Status"] || "").trim().toUpperCase();
             if (status && status !== "CONFIRMED" && status !== "ACTIVE") return;
-            const dateStr = normalizeDate(r["DATE"] || r["Doc Date"]);
+            
+            // Check for Cutpiece specific date column natively along with standard ones
+            const dateStr = normalizeDate(r["DATE"] || r["Doc Date"] || r["Cut PC tep DATE"] || r["BILLED DATE"]);
             if (!dateStr) return;
+            
             const qty = Number(r["QUANTITY"] || r["Quantity"] || 1);
             
             if (!receiptsByDate[dateStr]) receiptsByDate[dateStr] = {};
@@ -1346,7 +1371,14 @@
             
             receiptsByDate[dateStr]["ALL"].qty += qty;
             receiptsByDate[dateStr]["ALL"].categories[typeKey] = (receiptsByDate[dateStr]["ALL"].categories[typeKey] || 0) + qty;
+            
+            totalProcessed++;
           });
+
+          if (totalProcessed === 0) {
+             alert(`No valid date or receipt records found in ${file.name}. Please check the file format.`);
+             return;
+          }
           
           let subField = "gep_receipts";
           if (typeKey === "TEP") subField = "tep_receipts";
@@ -1355,7 +1387,7 @@
           await updateMonthlyData(subField, receiptsByDate, file.name);
           renderTallyDashboard();
           alert(`Updated ${typeKey} Receipts for ${currentActiveMonth}!`);
-        } catch (err) { alert(`Error parsing ${typeKey} Receipt report.`); }
+        } catch (err) { alert(`Error parsing ${typeKey} Receipt report: ` + err.message); }
       };
       reader.readAsArrayBuffer(file);
     }
