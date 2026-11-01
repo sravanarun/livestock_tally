@@ -575,7 +575,7 @@
 
   <script>
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 14; // Forced database wipe to clear old cache automatically
+    const DB_VERSION = 15; // Forced database wipe to clear old cache automatically
     let db;
 
     function openDatabase() {
@@ -1124,7 +1124,6 @@
             const val = Number(r["Total UCP"] || r["Total Invoice Value"] || 0);
             const wt = Number(r["Measured Wt"] || r["Actual Wt"] || r["Gross Wt"] || 0);
             
-            // Critical Fix: POS dump uses 'RSO Name', previous macro used 'DSR NAME'. Check for both.
             const dsrName = String(r["DSR NAME"] || r["RSO Name"] || r["RSO NAME"] || r["RSO"] || r["Staff Name"] || "").trim().toUpperCase();
             
             let fGrp = String(r["Final Group"] || "").trim().toUpperCase();
@@ -1484,66 +1483,80 @@
             };
             const initAll = () => initCounter("ALL");
 
-            // ISSUED CONVERSION (Splitting source, acts as negative inventory issue)
+            // ISSUED CONVERSION
             const issCode = String(r["Item Code"] || "").trim();
             const issLot = String(r["Lot Number"] || "").trim();
+            const issQty = Number(r["Issued Qty"] || 1);
+
             if (issCode) {
               const issKey = `${dateStr}_ISS_${issCode}_${issLot}`;
               if (!uniqueIssues.has(issKey)) {
                 uniqueIssues.add(issKey);
                 let counter = "", cat = "";
                 const char7 = issCode.length > 6 ? issCode.charAt(6).toUpperCase() : "";
+                
                 if (char7 === '2') {
-                    counter = "WEDDING"; cat = "Set 2 (Necklace & Earring)";
+                    counter = "WEDDING"; cat = "SetProduct2";
                 } else if (char7 === 'V') {
                     counter = "BANGLE";
                     const char11 = issCode.length > 10 ? issCode.charAt(10) : "";
                     if (char11 === "1") cat = "Set 1 (Single)";
                     else if (char11 === "2") cat = "Set 2 (Pair)";
                     else if (char11 === "4") cat = "Set 4 (Set of 4)";
-                    else cat = `Set ${char11}`;
+                    else if (char11) cat = `Set ${char11}`;
+                    else cat = "Other Bangles";
+                } else if (['D','H','J','S'].includes(char7)) {
+                    counter = "EARRING"; cat = "STUD EARRING";
+                } else if (char7 === 'N') {
+                    counter = "WEDDING"; cat = "NECKLACE";
                 }
 
                 if (counter) {
                     initCounter(counter); initAll();
-                    conversionsByDate[dateStr][counter].issQty++;
-                    conversionsByDate[dateStr][counter].issCats[cat] = (conversionsByDate[dateStr][counter].issCats[cat] || 0) + 1;
-                    conversionsByDate[dateStr]["ALL"].issQty++;
+                    conversionsByDate[dateStr][counter].issQty += issQty;
+                    conversionsByDate[dateStr][counter].issCats[cat] = (conversionsByDate[dateStr][counter].issCats[cat] || 0) + issQty;
+                    conversionsByDate[dateStr]["ALL"].issQty += issQty;
                     const allCat = counter === "BANGLE" ? "BANGLES" : cat;
-                    conversionsByDate[dateStr]["ALL"].issCats[allCat] = (conversionsByDate[dateStr]["ALL"].issCats[allCat] || 0) + 1;
+                    conversionsByDate[dateStr]["ALL"].issCats[allCat] = (conversionsByDate[dateStr]["ALL"].issCats[allCat] || 0) + issQty;
                 }
               }
             }
 
-            // RECEIVED CONVERSION (Resulting products, acts as positive GRN/Receipt)
+            // RECEIVED CONVERSION
             const recCode = String(r["Received Item Code"] || "").trim();
             const recLot = String(r["Received Lot Number"] || "").trim();
+            const recQty = Number(r["Received Qty"] || 1);
+
             if (recCode) {
               const recKey = `${dateStr}_REC_${recCode}_${recLot}`;
               if (!uniqueReceipts.has(recKey)) {
                 uniqueReceipts.add(recKey);
                 let counter = "", cat = "";
                 const char7 = recCode.length > 6 ? recCode.charAt(6).toUpperCase() : "";
+                
                 if (['D','H','J','S'].includes(char7)) {
-                    counter = "EARRING"; cat = "Stud Earring";
+                    counter = "EARRING"; cat = "STUD EARRING";
                 } else if (char7 === 'N') {
-                    counter = "WEDDING"; cat = "Necklace";
+                    counter = "WEDDING"; cat = "NECKLACE";
                 } else if (char7 === 'V') {
                     counter = "BANGLE";
                     const char11 = recCode.length > 10 ? recCode.charAt(10) : "";
                     if (char11 === "1") cat = "Set 1 (Single)";
                     else if (char11 === "2") cat = "Set 2 (Pair)";
                     else if (char11 === "4") cat = "Set 4 (Set of 4)";
-                    else cat = `Set ${char11}`;
+                    else if (char11) cat = `Set ${char11}`;
+                    else cat = "Other Bangles";
+                } else if (char7 === '2') {
+                    counter = "WEDDING"; cat = "SetProduct2";
                 }
 
                 if (counter) {
                     initCounter(counter); initAll();
-                    conversionsByDate[dateStr][counter].recQty++;
-                    conversionsByDate[dateStr][counter].recCats[cat] = (conversionsByDate[dateStr][counter].recCats[cat] || 0) + 1;
-                    conversionsByDate[dateStr]["ALL"].recQty++;
+                    conversionsByDate[dateStr][counter].recQty += recQty;
+                    conversionsByDate[dateStr][counter].recCats[cat] = (conversionsByDate[dateStr][counter].recCats[cat] || 0) + recQty;
+                    conversionsByDate[dateStr]["ALL"].recQty += recQty;
                     const allCat = counter === "BANGLE" ? "BANGLES" : cat;
-                    conversionsByDate[dateStr]["ALL"].recCats[allCat] = (conversionsByDate[dateStr]["ALL"].recCats[allCat] || 0) + 1;
+                    conversionsByDate[dateStr]["ALL"].recCats[allCat] = (conversionsByDate[dateStr]["ALL"].recCats[allCat] || 0) + recQty;
                 }
               }
             }
