@@ -431,10 +431,10 @@
           </div>
 
           <!-- 9. Conversion Report -->
-          <div class="border-2 border-dashed border-pink-300 hover:border-pink-500 bg-pink-50/30 rounded-xl p-4 flex flex-col justify-between" id="dropAreaConversion">
+          <div class="border-2 border-dashed border-fuchsia-300 hover:border-fuchsia-500 bg-fuchsia-50/30 rounded-xl p-4 flex flex-col justify-between" id="dropAreaConversion">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-bold text-pink-900">9. Conversion Report</span>
+                <span class="text-xs font-bold text-fuchsia-900">9. Conversion Report</span>
                 <span class="text-base">🔀</span>
               </div>
               <p class="text-[11px] text-slate-500">Product splitting & conversion</p>
@@ -442,7 +442,7 @@
             <div class="mt-4 flex items-center justify-between">
               <span id="conversionStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
               <input type="file" id="fileConversion" accept=".xlsx, .xls" class="hidden" />
-              <button onclick="document.getElementById('fileConversion').click()" type="button" class="text-xs font-semibold px-3 py-1 bg-pink-600 hover:bg-pink-700 text-white rounded-md cursor-pointer">Browse</button>
+              <button onclick="document.getElementById('fileConversion').click()" type="button" class="text-xs font-semibold px-3 py-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-md cursor-pointer">Browse</button>
             </div>
           </div>
         </div>
@@ -552,7 +552,7 @@
 
   <!-- MODAL: MANAGE FILES -->
   <div id="manageModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Manage Uploaded Reports</h3>
@@ -575,7 +575,7 @@
 
   <script>
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 13; // Bumped DB Version to clear old cache
+    const DB_VERSION = 14; // Forced database wipe to clear old cache automatically
     let db;
 
     function openDatabase() {
@@ -583,7 +583,6 @@
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
           const dbInstance = e.target.result;
-          // Delete old corrupted cache stores to guarantee clean run
           if (dbInstance.objectStoreNames.contains("days")) dbInstance.deleteObjectStore("days");
           if (dbInstance.objectStoreNames.contains("monthly_transactions")) dbInstance.deleteObjectStore("monthly_transactions");
           if (dbInstance.objectStoreNames.contains("ytd_baselines")) dbInstance.deleteObjectStore("ytd_baselines");
@@ -688,7 +687,7 @@
     let activeSalesSubTab = "summary";
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
-    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversion_issues: {}, conversion_receipts: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
     let currentYtdBaseline = null;
     let currentDailyEntryType = "ccaf";
 
@@ -1125,6 +1124,7 @@
             const val = Number(r["Total UCP"] || r["Total Invoice Value"] || 0);
             const wt = Number(r["Measured Wt"] || r["Actual Wt"] || r["Gross Wt"] || 0);
             
+            // Critical Fix: POS dump uses 'RSO Name', previous macro used 'DSR NAME'. Check for both.
             const dsrName = String(r["DSR NAME"] || r["RSO Name"] || r["RSO NAME"] || r["RSO"] || r["Staff Name"] || "").trim().toUpperCase();
             
             let fGrp = String(r["Final Group"] || "").trim().toUpperCase();
@@ -1212,6 +1212,7 @@
           });
 
           await updateMonthlyData("sales", salesByDate, file.name, { sales_items: salesItemsByDate, grn: grnByDate, salesRaw: rawSales });
+          updateUploadCardsStatus();
           renderTallyDashboard();
           renderSalesDesk();
           renderDsrDesk();
@@ -1281,6 +1282,7 @@
           }
 
           await updateMonthlyData("ghs", ghsByDate, file.name, { ghsRaw: rawGhs });
+          updateUploadCardsStatus();
           renderSalesDesk();
           renderDsrDesk();
           alert(`Successfully updated GHS & GGS schemes for ${currentActiveMonth}!`);
@@ -1328,6 +1330,7 @@
             receiptsByDate[dateStr]["ALL"].categories[allCatKey] = (receiptsByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
           await updateMonthlyData("receipts", receiptsByDate, file.name);
+          updateUploadCardsStatus();
           renderTallyDashboard();
           alert(`Updated Stock Receipts for ${currentActiveMonth}!`);
         } catch (err) { alert("Error parsing Stock Receipt report."); }
@@ -1397,6 +1400,7 @@
           if (typeKey === "CUTPIECE") subField = "cutpiece_receipts";
 
           await updateMonthlyData(subField, receiptsByDate, file.name);
+          updateUploadCardsStatus();
           renderTallyDashboard();
           alert(`Updated ${typeKey} Receipts for ${currentActiveMonth}!`);
         } catch (err) { alert(`Error parsing ${typeKey} Receipt report: ` + err.message); }
@@ -1439,6 +1443,7 @@
             issuesByDate[dateStr]["ALL"].categories[allCatKey] = (issuesByDate[dateStr]["ALL"].categories[allCatKey] || 0) + qty;
           });
           await updateMonthlyData("issues", issuesByDate, file.name);
+          updateUploadCardsStatus();
           renderTallyDashboard();
           alert(`Updated Stock Issues for ${currentActiveMonth}!`);
         } catch (err) { alert("Error parsing Stock Issue report."); }
@@ -1453,111 +1458,104 @@
           const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: true });
           const sheet = wb.Sheets[wb.SheetNames[0]];
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (rawRows.length < 2) return alert("Empty conversion report");
           
-          let headerIdx = 0;
-          for (let i = 0; i < Math.min(10, rawRows.length); i++) {
-            if (rawRows[i] && rawRows[i].some(c => String(c).toLowerCase().includes("variant") || String(c).toLowerCase().includes("item code"))) {
-              headerIdx = i; break;
-            }
-          }
-          
-          const headers = (rawRows[headerIdx] || []).map(h => String(h || "").trim());
-          const dataRows = [];
-          for (let r = headerIdx + 1; r < rawRows.length; r++) {
+          const headers = rawRows[1].map(h => String(h || "").trim());
+          const rows = [];
+          for (let r = 2; r < rawRows.length; r++) {
             const rowObj = {};
             headers.forEach((h, idx) => { if (h) rowObj[h] = rawRows[r][idx]; });
-            dataRows.push(rowObj);
+            rows.push(rowObj);
           }
 
-          const convIssues = {};
-          const convReceipts = {};
-          const seenIssues = new Set(); 
+          const conversionsByDate = {}; 
+          const uniqueIssues = new Set();
+          const uniqueReceipts = new Set();
 
-          dataRows.forEach(r => {
-             const dateStr = normalizeDate(r["Date"] || r["Posting Date"] || r["Doc Date"] || r["Document Date"]);
-             if (!dateStr) return;
-             
-             const issueCode = String(r["Variant Code"] || r["Item Code"] || r["Issued Item Code"] || "").trim().toUpperCase();
-             const issueLot = String(r["Lot No"] || r["Lot No."] || "").trim().toUpperCase();
-             
-             const recCode = String(r["Received Variant Code"] || r["Received Item Code"] || r["New Variant Code"] || "").trim().toUpperCase();
-             const recLot = String(r["Received Lot No"] || r["Received Lot No."] || "").trim().toUpperCase();
-             
-             if (issueCode && issueCode.length >= 7) {
-                 const issueKey = `${dateStr}_${issueCode}_${issueLot}`;
-                 if (!seenIssues.has(issueKey)) {
-                     seenIssues.add(issueKey);
-                     const char7 = issueCode.charAt(6);
-                     if (char7 === '2' || char7 === 'V') { 
-                         let counter, catKey;
-                         if (char7 === '2') { counter = "CHAIN"; catKey = "Necklace Set"; }
-                         else if (char7 === 'V') { 
-                             counter = "BANGLE"; 
-                             const char11 = issueCode.length >= 11 ? issueCode.charAt(10) : "";
-                             if (char11 === "1") catKey = "Set 1 (Single)";
-                             else if (char11 === "2") catKey = "Set 2 (Pair)";
-                             else if (char11 === "4") catKey = "Set 4 (Set of 4)";
-                             else if (char11) catKey = `Set ${char11}`;
-                             else catKey = "Other Bangles";
-                         }
-                         
-                         if (counter) {
-                             if (!convIssues[dateStr]) convIssues[dateStr] = {};
-                             if (!convIssues[dateStr][counter]) convIssues[dateStr][counter] = { qty: 0, categories: {}, conversions: {} };
-                             if (!convIssues[dateStr]["ALL"]) convIssues[dateStr]["ALL"] = { qty: 0, categories: {}, conversions: {} };
-                             
-                             convIssues[dateStr][counter].qty += 1;
-                             convIssues[dateStr][counter].categories[catKey] = (convIssues[dateStr][counter].categories[catKey] || 0) + 1;
-                             convIssues[dateStr]["ALL"].qty += 1;
-                             const allCatKey = counter === "BANGLE" ? "BANGLES" : catKey;
-                             convIssues[dateStr]["ALL"].categories[allCatKey] = (convIssues[dateStr]["ALL"].categories[allCatKey] || 0) + 1;
-                             
-                             convIssues[dateStr][counter].conversions[catKey] = (convIssues[dateStr][counter].conversions[catKey] || 0) + 1;
-                             convIssues[dateStr]["ALL"].conversions[allCatKey] = (convIssues[dateStr]["ALL"].conversions[allCatKey] || 0) + 1;
-                         }
-                     }
-                 }
-             }
+          rows.forEach(r => {
+            const dateStr = normalizeDate(r["Issued Doc Date"] || r["Received Doc Date"]);
+            if (!dateStr) return;
+            if (!conversionsByDate[dateStr]) conversionsByDate[dateStr] = {};
 
-             if (recCode && recCode.length >= 7) {
-                 const char7 = recCode.charAt(6);
-                 let counter, catKey;
-                 if (['D','H','J','S'].includes(char7)) { counter = "EARRING"; catKey = "STUD EARRING"; }
-                 else if (char7 === 'N') { counter = "CHAIN"; catKey = "CHAIN"; } 
-                 else if (char7 === '2') { counter = "CHAIN"; catKey = "Necklace Set"; }
-                 else if (char7 === 'V') {
-                     counter = "BANGLE"; 
-                     const char11 = recCode.length >= 11 ? recCode.charAt(10) : "";
-                     if (char11 === "1") catKey = "Set 1 (Single)";
-                     else if (char11 === "2") catKey = "Set 2 (Pair)";
-                     else if (char11 === "4") catKey = "Set 4 (Set of 4)";
-                     else if (char11) catKey = `Set ${char11}`;
-                     else catKey = "Other Bangles";
-                 }
+            const initCounter = (cnt) => {
+               if (!conversionsByDate[dateStr][cnt]) {
+                   conversionsByDate[dateStr][cnt] = { issQty: 0, recQty: 0, issCats: {}, recCats: {} };
+               }
+            };
+            const initAll = () => initCounter("ALL");
 
-                 if (counter) {
-                     if (!convReceipts[dateStr]) convReceipts[dateStr] = {};
-                     if (!convReceipts[dateStr][counter]) convReceipts[dateStr][counter] = { qty: 0, categories: {}, conversions: {} };
-                     if (!convReceipts[dateStr]["ALL"]) convReceipts[dateStr]["ALL"] = { qty: 0, categories: {}, conversions: {} };
-                     
-                     convReceipts[dateStr][counter].qty += 1;
-                     convReceipts[dateStr][counter].categories[catKey] = (convReceipts[dateStr][counter].categories[catKey] || 0) + 1;
-                     convReceipts[dateStr]["ALL"].qty += 1;
-                     const allCatKey = counter === "BANGLE" ? "BANGLES" : catKey;
-                     convReceipts[dateStr]["ALL"].categories[allCatKey] = (convReceipts[dateStr]["ALL"].categories[allCatKey] || 0) + 1;
+            // ISSUED CONVERSION (Splitting source, acts as negative inventory issue)
+            const issCode = String(r["Item Code"] || "").trim();
+            const issLot = String(r["Lot Number"] || "").trim();
+            if (issCode) {
+              const issKey = `${dateStr}_ISS_${issCode}_${issLot}`;
+              if (!uniqueIssues.has(issKey)) {
+                uniqueIssues.add(issKey);
+                let counter = "", cat = "";
+                const char7 = issCode.length > 6 ? issCode.charAt(6).toUpperCase() : "";
+                if (char7 === '2') {
+                    counter = "WEDDING"; cat = "Set 2 (Necklace & Earring)";
+                } else if (char7 === 'V') {
+                    counter = "BANGLE";
+                    const char11 = issCode.length > 10 ? issCode.charAt(10) : "";
+                    if (char11 === "1") cat = "Set 1 (Single)";
+                    else if (char11 === "2") cat = "Set 2 (Pair)";
+                    else if (char11 === "4") cat = "Set 4 (Set of 4)";
+                    else cat = `Set ${char11}`;
+                }
 
-                     convReceipts[dateStr][counter].conversions[catKey] = (convReceipts[dateStr][counter].conversions[catKey] || 0) + 1;
-                     convReceipts[dateStr]["ALL"].conversions[allCatKey] = (convReceipts[dateStr]["ALL"].conversions[allCatKey] || 0) + 1;
-                 }
-             }
+                if (counter) {
+                    initCounter(counter); initAll();
+                    conversionsByDate[dateStr][counter].issQty++;
+                    conversionsByDate[dateStr][counter].issCats[cat] = (conversionsByDate[dateStr][counter].issCats[cat] || 0) + 1;
+                    conversionsByDate[dateStr]["ALL"].issQty++;
+                    const allCat = counter === "BANGLE" ? "BANGLES" : cat;
+                    conversionsByDate[dateStr]["ALL"].issCats[allCat] = (conversionsByDate[dateStr]["ALL"].issCats[allCat] || 0) + 1;
+                }
+              }
+            }
+
+            // RECEIVED CONVERSION (Resulting products, acts as positive GRN/Receipt)
+            const recCode = String(r["Received Item Code"] || "").trim();
+            const recLot = String(r["Received Lot Number"] || "").trim();
+            if (recCode) {
+              const recKey = `${dateStr}_REC_${recCode}_${recLot}`;
+              if (!uniqueReceipts.has(recKey)) {
+                uniqueReceipts.add(recKey);
+                let counter = "", cat = "";
+                const char7 = recCode.length > 6 ? recCode.charAt(6).toUpperCase() : "";
+                if (['D','H','J','S'].includes(char7)) {
+                    counter = "EARRING"; cat = "Stud Earring";
+                } else if (char7 === 'N') {
+                    counter = "WEDDING"; cat = "Necklace";
+                } else if (char7 === 'V') {
+                    counter = "BANGLE";
+                    const char11 = recCode.length > 10 ? recCode.charAt(10) : "";
+                    if (char11 === "1") cat = "Set 1 (Single)";
+                    else if (char11 === "2") cat = "Set 2 (Pair)";
+                    else if (char11 === "4") cat = "Set 4 (Set of 4)";
+                    else cat = `Set ${char11}`;
+                }
+
+                if (counter) {
+                    initCounter(counter); initAll();
+                    conversionsByDate[dateStr][counter].recQty++;
+                    conversionsByDate[dateStr][counter].recCats[cat] = (conversionsByDate[dateStr][counter].recCats[cat] || 0) + 1;
+                    conversionsByDate[dateStr]["ALL"].recQty++;
+                    const allCat = counter === "BANGLE" ? "BANGLES" : cat;
+                    conversionsByDate[dateStr]["ALL"].recCats[allCat] = (conversionsByDate[dateStr]["ALL"].recCats[allCat] || 0) + 1;
+                }
+              }
+            }
           });
 
-          await updateMonthlyData("conversion_issues", convIssues, file.name, { conversion_receipts: convReceipts });
+          await updateMonthlyData("conversions", conversionsByDate, file.name);
+          updateUploadCardsStatus();
           renderTallyDashboard();
           alert(`Updated Conversions for ${currentActiveMonth}!`);
         } catch (err) {
           console.error(err);
-          alert("Error parsing Conversion report: " + err.message);
+          alert("Error parsing Conversion report.");
         }
       };
       reader.readAsArrayBuffer(file);
@@ -1566,7 +1564,7 @@
     async function updateMonthlyData(fieldName, dataByDate, fileName, extraFields = {}) {
       const mKey = currentActiveMonth;
       let mRec = await getMonthRecord(mKey);
-      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversion_issues: {}, conversion_receipts: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
+      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
       if (mRec.isArchived) throw new Error(`Month ${mKey} is locked and archived.`);
       
       if (!mRec.files) mRec.files = {};
@@ -1593,9 +1591,9 @@
       const hasTepRec = mRec.tep_receipts && Object.keys(mRec.tep_receipts).length > 0;
       const hasCutpieceRec = mRec.cutpiece_receipts && Object.keys(mRec.cutpiece_receipts).length > 0;
       const hasIss = mRec.issues && Object.keys(mRec.issues).length > 0;
-      const hasConversion = mRec.conversion_issues && Object.keys(mRec.conversion_issues).length > 0;
       const hasSale = mRec.sales && Object.keys(mRec.sales).length > 0;
       const hasGhs = mRec.ghs && Object.keys(mRec.ghs).length > 0;
+      const hasConv = mRec.conversions && Object.keys(mRec.conversions).length > 0;
 
       const setBadge = (id, has) => {
         const el = document.getElementById(id);
@@ -1609,9 +1607,9 @@
       setBadge("tepReceiptStatus", hasTepRec);
       setBadge("cutpieceReceiptStatus", hasCutpieceRec);
       setBadge("issueStatus", hasIss);
-      setBadge("conversionStatus", hasConversion);
       setBadge("salesStatus", hasSale);
       setBadge("ghsStatus", hasGhs);
+      setBadge("conversionStatus", hasConv);
     }
 
     async function refreshMonthDropdown() {
@@ -1636,7 +1634,7 @@
 
       currentActiveMonth = selData ? selData.value : "2026-10";
       currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
-        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversion_issues: {}, conversion_receipts: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: []
+        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: []
       };
 
       if (!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
@@ -1719,7 +1717,7 @@
     }
 
     function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
-      const res = { qty: 0, categories: {}, conversions: {} };
+      const res = { qty: 0, categories: {} };
       if (!mRec) return res;
       const addRec = (subDict) => {
         const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
@@ -1728,40 +1726,12 @@
           Object.keys(item.categories || {}).forEach(k => {
             res.categories[k] = (res.categories[k] || 0) + (Number(item.categories[k]) || 0);
           });
-          if (item.conversions) {
-            Object.keys(item.conversions).forEach(k => {
-               res.conversions[k] = (res.conversions[k] || 0) + (Number(item.conversions[k]) || 0);
-            });
-          }
         }
       };
       addRec(mRec.receipts);
       addRec(mRec.gep_receipts);
       addRec(mRec.tep_receipts);
       addRec(mRec.cutpiece_receipts);
-      addRec(mRec.conversion_receipts);
-      return res;
-    }
-    
-    function getConsolidatedIssues(mRec, selectedDate, selectedCounter) {
-      const res = { qty: 0, categories: {}, conversions: {} };
-      if (!mRec) return res;
-      const addIss = (subDict) => {
-        const item = (subDict && subDict[selectedDate] && subDict[selectedDate][selectedCounter]) ? subDict[selectedDate][selectedCounter] : null;
-        if (item) {
-          res.qty += Number(item.qty) || 0;
-          Object.keys(item.categories || {}).forEach(k => {
-            res.categories[k] = (res.categories[k] || 0) + (Number(item.categories[k]) || 0);
-          });
-          if (item.conversions) {
-            Object.keys(item.conversions).forEach(k => {
-               res.conversions[k] = (res.conversions[k] || 0) + (Number(item.conversions[k]) || 0);
-            });
-          }
-        }
-      };
-      addIss(mRec.issues);
-      addIss(mRec.conversion_issues);
       return res;
     }
 
@@ -1832,10 +1802,15 @@
       const mRec = currentMonthData || {};
       const recDate = getConsolidatedReceipts(mRec, selectedDate, currentTallyCounter);
       const grnDate = (mRec.grn && mRec.grn[selectedDate] && mRec.grn[selectedDate][currentTallyCounter]) ? mRec.grn[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
-      const issDate = getConsolidatedIssues(mRec, selectedDate, currentTallyCounter);
+      const issDate = (mRec.issues && mRec.issues[selectedDate] && mRec.issues[selectedDate][currentTallyCounter]) ? mRec.issues[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
       const saleDate = (mRec.sales && mRec.sales[selectedDate] && mRec.sales[selectedDate][currentTallyCounter]) ? mRec.sales[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
+      
+      const convDate = (mRec.conversions && mRec.conversions[selectedDate] && mRec.conversions[selectedDate][currentTallyCounter]) ? mRec.conversions[selectedDate][currentTallyCounter] : { issQty: 0, recQty: 0, issCats: {}, recCats: {} };
 
-      const netTransactions = (Number(recDate.qty) || 0) + (Number(grnDate.qty) || 0) - (Number(issDate.qty) || 0) - (Number(saleDate.qty) || 0);
+      const totalReceiptsMacro = (Number(recDate.qty) || 0) + (Number(convDate.recQty) || 0);
+      const totalIssuesMacro = (Number(issDate.qty) || 0) + (Number(convDate.issQty) || 0);
+      
+      const netTransactions = totalReceiptsMacro + (Number(grnDate.qty) || 0) - totalIssuesMacro - (Number(saleDate.qty) || 0);
 
       const openQtyEl = document.getElementById("tallyOpenQty");
       const openGrossEl = document.getElementById("tallyOpenGross");
@@ -1853,9 +1828,9 @@
       const txGrnEl = document.getElementById("txGrn");
       const txIssEl = document.getElementById("txIss");
       const txSoldEl = document.getElementById("txSold");
-      if (txRecEl) txRecEl.textContent = `+${recDate.qty || 0}`;
+      if (txRecEl) txRecEl.innerHTML = `+${totalReceiptsMacro}${convDate.recQty > 0 ? `<span class="text-fuchsia-500 ml-0.5">${'*'.repeat(convDate.recQty)}</span>` : ''}`;
       if (txGrnEl) txGrnEl.textContent = `+${grnDate.qty || 0}`;
-      if (txIssEl) txIssEl.textContent = `-${issDate.qty || 0}`;
+      if (txIssEl) txIssEl.innerHTML = `-${totalIssuesMacro}${convDate.issQty > 0 ? `<span class="text-fuchsia-500 ml-0.5">${'*'.repeat(convDate.issQty)}</span>` : ''}`;
       if (txSoldEl) txSoldEl.textContent = `-${saleDate.qty || 0}`;
 
       const closeQtyEl = document.getElementById("tallyCloseQty");
@@ -1908,17 +1883,19 @@
       if (currentTallyCounter === "COIN") {
         renderTallyCoinsSection(container, openData, closeData, hasOpening, hasClosing, selectedDate);
       } else {
-        renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate);
+        renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate, convDate);
       }
     }
 
-    function renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate) {
+    function renderTallyStandardSection(container, openData, closeData, hasOpening, hasClosing, selectedDate, recDate, grnDate, issDate, saleDate, convDate) {
       const openCategories = (openData && openData.categories) ? openData.categories : {};
       const closeCategories = (closeData && closeData.categories) ? closeData.categories : {};
       const recCategories = (recDate && recDate.categories) ? recDate.categories : {};
       const grnCategories = (grnDate && grnDate.categories) ? grnDate.categories : {};
       const issCategories = (issDate && issDate.categories) ? issDate.categories : {};
       const saleCategories = (saleDate && saleDate.categories) ? saleDate.categories : {};
+      const convIssCats = (convDate && convDate.issCats) ? convDate.issCats : {};
+      const convRecCats = (convDate && convDate.recCats) ? convDate.recCats : {};
 
       const allCatKeys = Array.from(new Set([
         ...Object.keys(openCategories),
@@ -1926,7 +1903,9 @@
         ...Object.keys(recCategories),
         ...Object.keys(grnCategories),
         ...Object.keys(issCategories),
-        ...Object.keys(saleCategories)
+        ...Object.keys(saleCategories),
+        ...Object.keys(convIssCats),
+        ...Object.keys(convRecCats)
       ])).sort();
 
       const sectionTitle = currentTallyCounter === "BANGLE" 
@@ -1944,16 +1923,13 @@
           const iQ = getSafeQty(issCategories[cat]);
           const sQ = getSafeQty(saleCategories[cat]);
           
-          const rConv = (recDate && recDate.conversions && recDate.conversions[cat]) ? recDate.conversions[cat] : 0;
-          const iConv = (issDate && issDate.conversions && issDate.conversions[cat]) ? issDate.conversions[cat] : 0;
-
-          let rQStr = rQ > 0 ? `+${rQ}` : 0;
-          if (rConv > 0) rQStr += `<span class="text-pink-500 font-bold ml-1 tracking-tighter" title="${rConv} created from conversion">${'*'.repeat(rConv)}</span>`;
+          const cIssQ = convIssCats[cat] || 0;
+          const cRecQ = convRecCats[cat] || 0;
           
-          let iQStr = iQ > 0 ? `-${iQ}` : 0;
-          if (iConv > 0) iQStr += `<span class="text-pink-500 font-bold ml-1 tracking-tighter" title="${iConv} consumed by conversion">${'*'.repeat(iConv)}</span>`;
+          const totalRec = rQ + cRecQ;
+          const totalIss = iQ + cIssQ;
 
-          const systemClosing = oQ + rQ + gQ - iQ - sQ;
+          const systemClosing = oQ + totalRec + gQ - totalIss - sQ;
           const hasCloseCat = closeData && closeCategories[cat] !== undefined;
           const cQ = hasCloseCat ? getSafeQty(closeCategories[cat]) : null;
 
@@ -1964,14 +1940,17 @@
             diffDisplay = diff > 0 ? `+${diff}` : `${diff}`;
             diffClass = diff === 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-extrabold";
           }
+          
+          const recStars = cRecQ > 0 ? `<span class="text-fuchsia-500 font-bold ml-0.5" title="${cRecQ} product(s) received from conversion">${'*'.repeat(cRecQ)}</span>` : '';
+          const issStars = cIssQ > 0 ? `<span class="text-fuchsia-500 font-bold ml-0.5" title="${cIssQ} product(s) split/issued in conversion">${'*'.repeat(cIssQ)}</span>` : '';
 
           rowsHtml += `
             <tr class="hover:bg-slate-50 transition-colors">
               <td class="px-4 py-2.5 font-medium text-slate-800">${cat}</td>
               <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${hasOpening ? oQ : "—"}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-blue-600">${rQStr}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-blue-600">${totalRec > 0 ? `+${totalRec}${recStars}` : 0}</td>
               <td class="px-3 py-2.5 text-right font-medium text-emerald-600">${gQ > 0 ? `+${gQ}` : 0}</td>
-              <td class="px-3 py-2.5 text-right font-medium text-purple-600">${iQStr}</td>
+              <td class="px-3 py-2.5 text-right font-medium text-purple-600">${totalIss > 0 ? `-${totalIss}${issStars}` : 0}</td>
               <td class="px-3 py-2.5 text-right font-medium text-rose-600">${sQ > 0 ? `-${sQ}` : 0}</td>
               <td class="px-3 py-2.5 text-right font-semibold text-slate-900">${cQ !== null ? cQ : '<span class="text-slate-400 italic text-xs">Pending</span>'}</td>
               <td class="px-4 py-2.5 text-right ${diffClass}">${diffDisplay}</td>
@@ -1994,9 +1973,9 @@
                 <tr>
                   <th class="px-4 py-3">${currentTallyCounter === "BANGLE" ? "Bangle Set" : (currentTallyCounter === "OLD GOLD" ? "Counter Group" : "Category")}</th>
                   <th class="px-3 py-3 text-right">Opening</th>
-                  <th class="px-3 py-3 text-right text-blue-700">+Rec <span class="text-[10px] text-pink-500 lowercase tracking-tighter ml-1">(*conv)</span></th>
+                  <th class="px-3 py-3 text-right text-blue-700">+Rec</th>
                   <th class="px-3 py-3 text-right text-emerald-700">+GRN</th>
-                  <th class="px-3 py-3 text-right text-purple-700">-Iss <span class="text-[10px] text-pink-500 lowercase tracking-tighter ml-1">(*conv)</span></th>
+                  <th class="px-3 py-3 text-right text-purple-700">-Iss</th>
                   <th class="px-3 py-3 text-right text-rose-700">-Sold</th>
                   <th class="px-3 py-3 text-right font-bold text-slate-800">Closing</th>
                   <th class="px-4 py-3 text-right">Difference</th>
@@ -2659,9 +2638,9 @@
         const hasTepRec = m.tep_receipts && Object.keys(m.tep_receipts).length > 0;
         const hasCutpieceRec = m.cutpiece_receipts && Object.keys(m.cutpiece_receipts).length > 0;
         const hasIss = m.issues && Object.keys(m.issues).length > 0;
-        const hasConv = m.conversion_issues && Object.keys(m.conversion_issues).length > 0;
         const hasSale = m.sales && Object.keys(m.sales).length > 0;
         const hasGhs = m.ghs && Object.keys(m.ghs).length > 0;
+        const hasConv = m.conversions && Object.keys(m.conversions).length > 0;
 
         item.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -2671,15 +2650,15 @@
             </div>
             <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 cursor-pointer">Delete Month</button>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 pt-1 text-[11px]">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-1 text-[11px]">
             <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-blue-900">STM Receipt</span><div class="mt-2 text-right">${hasRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-amber-900">GEP Receipt</span><div class="mt-2 text-right">${hasGepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-indigo-900">TEP Receipt</span><div class="mt-2 text-right">${hasTepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasCutpieceRec ? 'border-cyan-200 bg-cyan-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-cyan-900">Cutpiece Rec.</span><div class="mt-2 text-right">${hasCutpieceRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'cutpiece_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-purple-900">Issues</span><div class="mt-2 text-right">${hasIss ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
-            <div class="p-2 rounded-lg border ${hasConv ? 'border-pink-200 bg-pink-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-pink-900">Conversions</span><div class="mt-2 text-right">${hasConv ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'conversion_issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-emerald-900">Sales POS</span><div class="mt-2 text-right">${hasSale ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasGhs ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-rose-900">GHS Scheme</span><div class="mt-2 text-right">${hasGhs ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'ghs')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasConv ? 'border-fuchsia-200 bg-fuchsia-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-fuchsia-900">Conversions</span><div class="mt-2 text-right">${hasConv ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'conversions')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
           </div>
         `;
         container.appendChild(item);
@@ -2701,7 +2680,6 @@
       if (mRec) {
         if (subKey === "sales") { mRec.sales = {}; mRec.sales_items = {}; mRec.grn = {}; mRec.salesRaw = []; } 
         else if (subKey === "ghs") { mRec.ghs = {}; mRec.ghsRaw = []; }
-        else if (subKey === "conversion_issues") { mRec.conversion_issues = {}; mRec.conversion_receipts = {}; }
         else mRec[subKey] = {};
         if (mRec.files) delete mRec.files[subKey];
         await saveMonthRecord(mRec); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
@@ -2776,7 +2754,7 @@
       if (selDataMonth) {
         selDataMonth.onchange = async (e) => {
           currentActiveMonth = e.target.value;
-          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversion_issues: {}, conversion_receipts: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
           if(!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
           const ytdInp = document.getElementById("ytdTargetMonth");
           if (ytdInp) ytdInp.value = currentActiveMonth;
