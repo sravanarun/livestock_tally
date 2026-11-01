@@ -543,7 +543,7 @@
 
   <script>
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 8;
+    const DB_VERSION = 10; // Forcing database wipe to clear old cache automatically
     let db;
 
     function openDatabase() {
@@ -551,9 +551,14 @@
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
           const dbInstance = e.target.result;
-          if (!dbInstance.objectStoreNames.contains("days")) dbInstance.createObjectStore("days", { keyPath: "date" });
-          if (!dbInstance.objectStoreNames.contains("monthly_transactions")) dbInstance.createObjectStore("monthly_transactions", { keyPath: "month" });
-          if (!dbInstance.objectStoreNames.contains("ytd_baselines")) dbInstance.createObjectStore("ytd_baselines", { keyPath: "month" });
+          // Delete old corrupted cache stores to guarantee clean run
+          if (dbInstance.objectStoreNames.contains("days")) dbInstance.deleteObjectStore("days");
+          if (dbInstance.objectStoreNames.contains("monthly_transactions")) dbInstance.deleteObjectStore("monthly_transactions");
+          if (dbInstance.objectStoreNames.contains("ytd_baselines")) dbInstance.deleteObjectStore("ytd_baselines");
+          
+          dbInstance.createObjectStore("days", { keyPath: "date" });
+          dbInstance.createObjectStore("monthly_transactions", { keyPath: "month" });
+          dbInstance.createObjectStore("ytd_baselines", { keyPath: "month" });
         };
         req.onsuccess = (e) => { db = e.target.result; resolve(db); };
         req.onerror = (e) => reject(e);
@@ -714,9 +719,9 @@
       const cleanBin = String(binCode || "").trim().toUpperCase();
       const cleanCat = String(origCat || "").trim().toUpperCase();
       
-      // Combine into OLD GOLD counter, but retain specific categories (GEP, TEP, CUTPIECE)
-      if (cleanBin === "GEP") return { counter: "OLD GOLD", finalGroup: "GEP", finalCat: "GEP" };
-      if (cleanBin === "TEP") return { counter: "OLD GOLD", finalGroup: "TEP", finalCat: "TEP" };
+      // Combine into OLD GOLD counter, but specifically retain their own proper categories
+      if (cleanBin === "GEP" || cleanCat === "GEP") return { counter: "OLD GOLD", finalGroup: "GEP", finalCat: "GEP" };
+      if (cleanBin === "TEP" || cleanCat === "TEP") return { counter: "OLD GOLD", finalGroup: "TEP", finalCat: "TEP" };
       if (cleanBin.includes("CUTPIECE") || cleanBin.includes("CUT PIECE") || cleanCat.includes("CUTPIECE")) { 
         return { counter: "OLD GOLD", finalGroup: "CUTPIECE", finalCat: "CUTPIECE" }; 
       }
@@ -1319,11 +1324,11 @@
             if (!receiptsByDate[dateStr][counterKey]) receiptsByDate[dateStr][counterKey] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
             
+            // Map the exact category (GEP or TEP) correctly into both views
             receiptsByDate[dateStr][counterKey].qty += qty;
             receiptsByDate[dateStr][counterKey].categories[typeKey] = (receiptsByDate[dateStr][counterKey].categories[typeKey] || 0) + qty;
             
             receiptsByDate[dateStr]["ALL"].qty += qty;
-            // FIXED: Keep the category name as typeKey (GEP or TEP) in the ALL view
             receiptsByDate[dateStr]["ALL"].categories[typeKey] = (receiptsByDate[dateStr]["ALL"].categories[typeKey] || 0) + qty;
           });
           
