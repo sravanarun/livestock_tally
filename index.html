@@ -300,7 +300,7 @@
           </div>
         </div>
 
-        <!-- 7 Upload Cards Grid -->
+        <!-- 8 Upload Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <!-- 1. Live Stock -->
           <div class="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 rounded-xl p-4 flex flex-col justify-between" id="dropAreaLive">
@@ -411,6 +411,22 @@
               <span id="ghsStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
               <input type="file" id="fileGhs" accept=".xlsx, .xls" class="hidden" />
               <button onclick="document.getElementById('fileGhs').click()" type="button" class="text-xs font-semibold px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md cursor-pointer">Browse</button>
+            </div>
+          </div>
+
+          <!-- 8. Cutpiece Receipt -->
+          <div class="border-2 border-dashed border-cyan-300 hover:border-cyan-500 bg-cyan-50/30 rounded-xl p-4 flex flex-col justify-between" id="dropAreaCutpieceReceipt">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-cyan-900">8. Cutpiece Receipt</span>
+                <span class="text-base">✂️</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Cutpiece inwarding reports</p>
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+              <span id="cutpieceReceiptStatus" class="text-[10px] text-slate-400">Not Uploaded</span>
+              <input type="file" id="fileCutpieceReceipt" accept=".xlsx, .xls" class="hidden" />
+              <button onclick="document.getElementById('fileCutpieceReceipt').click()" type="button" class="text-xs font-semibold px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md cursor-pointer">Browse</button>
             </div>
           </div>
         </div>
@@ -543,7 +559,7 @@
 
   <script>
     const DB_NAME = "StoreStockDB";
-    const DB_VERSION = 10; // Forcing database wipe to clear old cache automatically
+    const DB_VERSION = 11; // Forced database wipe to clear old cache automatically
     let db;
 
     function openDatabase() {
@@ -656,7 +672,7 @@
     let activeSalesSubTab = "summary";
     let allDayRecords = [];
     let currentActiveMonth = "2026-10";
-    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+    let currentMonthData = { month: "2026-10", isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
     let currentYtdBaseline = null;
     let currentDailyEntryType = "ccaf";
 
@@ -1324,7 +1340,7 @@
             if (!receiptsByDate[dateStr][counterKey]) receiptsByDate[dateStr][counterKey] = { qty: 0, categories: {} };
             if (!receiptsByDate[dateStr]["ALL"]) receiptsByDate[dateStr]["ALL"] = { qty: 0, categories: {} };
             
-            // Map the exact category (GEP or TEP) correctly into both views
+            // Map the exact category correctly into both views
             receiptsByDate[dateStr][counterKey].qty += qty;
             receiptsByDate[dateStr][counterKey].categories[typeKey] = (receiptsByDate[dateStr][counterKey].categories[typeKey] || 0) + qty;
             
@@ -1332,7 +1348,10 @@
             receiptsByDate[dateStr]["ALL"].categories[typeKey] = (receiptsByDate[dateStr]["ALL"].categories[typeKey] || 0) + qty;
           });
           
-          const subField = typeKey === "GEP" ? "gep_receipts" : "tep_receipts";
+          let subField = "gep_receipts";
+          if (typeKey === "TEP") subField = "tep_receipts";
+          if (typeKey === "CUTPIECE") subField = "cutpiece_receipts";
+
           await updateMonthlyData(subField, receiptsByDate, file.name);
           renderTallyDashboard();
           alert(`Updated ${typeKey} Receipts for ${currentActiveMonth}!`);
@@ -1386,7 +1405,7 @@
     async function updateMonthlyData(fieldName, dataByDate, fileName, extraFields = {}) {
       const mKey = currentActiveMonth;
       let mRec = await getMonthRecord(mKey);
-      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
+      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
       if (mRec.isArchived) throw new Error(`Month ${mKey} is locked and archived.`);
       
       if (!mRec.files) mRec.files = {};
@@ -1411,6 +1430,7 @@
       const hasRec = mRec.receipts && Object.keys(mRec.receipts).length > 0;
       const hasGepRec = mRec.gep_receipts && Object.keys(mRec.gep_receipts).length > 0;
       const hasTepRec = mRec.tep_receipts && Object.keys(mRec.tep_receipts).length > 0;
+      const hasCutpieceRec = mRec.cutpiece_receipts && Object.keys(mRec.cutpiece_receipts).length > 0;
       const hasIss = mRec.issues && Object.keys(mRec.issues).length > 0;
       const hasSale = mRec.sales && Object.keys(mRec.sales).length > 0;
       const hasGhs = mRec.ghs && Object.keys(mRec.ghs).length > 0;
@@ -1425,6 +1445,7 @@
       setBadge("receiptStatus", hasRec);
       setBadge("gepReceiptStatus", hasGepRec);
       setBadge("tepReceiptStatus", hasTepRec);
+      setBadge("cutpieceReceiptStatus", hasCutpieceRec);
       setBadge("issueStatus", hasIss);
       setBadge("salesStatus", hasSale);
       setBadge("ghsStatus", hasGhs);
@@ -1452,7 +1473,7 @@
 
       currentActiveMonth = selData ? selData.value : "2026-10";
       currentMonthData = (await getMonthRecord(currentActiveMonth)) || {
-        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: []
+        month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: []
       };
 
       if (!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
@@ -1549,6 +1570,7 @@
       addRec(mRec.receipts);
       addRec(mRec.gep_receipts);
       addRec(mRec.tep_receipts);
+      addRec(mRec.cutpiece_receipts);
       return res;
     }
 
@@ -2435,6 +2457,7 @@
         const hasRec = m.receipts && Object.keys(m.receipts).length > 0;
         const hasGepRec = m.gep_receipts && Object.keys(m.gep_receipts).length > 0;
         const hasTepRec = m.tep_receipts && Object.keys(m.tep_receipts).length > 0;
+        const hasCutpieceRec = m.cutpiece_receipts && Object.keys(m.cutpiece_receipts).length > 0;
         const hasIss = m.issues && Object.keys(m.issues).length > 0;
         const hasSale = m.sales && Object.keys(m.sales).length > 0;
         const hasGhs = m.ghs && Object.keys(m.ghs).length > 0;
@@ -2447,10 +2470,11 @@
             </div>
             <button onclick="handleDeleteEntireMonth('${m.month}')" type="button" class="text-xs font-semibold px-2 py-1 text-rose-600 hover:bg-rose-50 rounded border border-rose-200 cursor-pointer">Delete Month</button>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px]">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 pt-1 text-[11px]">
             <div class="p-2 rounded-lg border ${hasRec ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-blue-900">STM Receipt</span><div class="mt-2 text-right">${hasRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasGepRec ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-amber-900">GEP Receipt</span><div class="mt-2 text-right">${hasGepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'gep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasTepRec ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-indigo-900">TEP Receipt</span><div class="mt-2 text-right">${hasTepRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'tep_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
+            <div class="p-2 rounded-lg border ${hasCutpieceRec ? 'border-cyan-200 bg-cyan-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-cyan-900">Cutpiece Rec.</span><div class="mt-2 text-right">${hasCutpieceRec ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'cutpiece_receipts')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasIss ? 'border-purple-200 bg-purple-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-purple-900">Issues</span><div class="mt-2 text-right">${hasIss ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'issues')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasSale ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-emerald-900">Sales POS</span><div class="mt-2 text-right">${hasSale ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'sales')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
             <div class="p-2 rounded-lg border ${hasGhs ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between"><span class="font-bold text-rose-900">GHS Scheme</span><div class="mt-2 text-right">${hasGhs ? `<button onclick="handleDeleteMonthSubReport('${m.month}', 'ghs')" class="font-bold text-rose-600 hover:underline cursor-pointer">Delete</button>` : '<span class="text-slate-400">—</span>'}</div></div>
@@ -2524,6 +2548,7 @@
       bindDrop("dropAreaGepReceipt", "fileGepReceipt", (f) => processGepOrTepReceiptFile(f, "GEP"));
       bindDrop("dropAreaTepReceipt", "fileTepReceipt", (f) => processGepOrTepReceiptFile(f, "TEP"));
       bindDrop("dropAreaGhs", "fileGhs", processGhsFile);
+      bindDrop("dropAreaCutpieceReceipt", "fileCutpieceReceipt", (f) => processGepOrTepReceiptFile(f, "CUTPIECE"));
 
       const selTally = document.getElementById("tallyDateSelect");
       const selSales = document.getElementById("salesDateSelect");
@@ -2547,7 +2572,7 @@
       if (selDataMonth) {
         selDataMonth.onchange = async (e) => {
           currentActiveMonth = e.target.value;
-          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, issues: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
+          currentMonthData = (await getMonthRecord(currentActiveMonth)) || { month: currentActiveMonth, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, sales: {}, grn: {}, dsrConfig: { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} }, salesRaw: [], ghsRaw: [] };
           if(!currentMonthData.dsrConfig) currentMonthData.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
           const ytdInp = document.getElementById("ytdTargetMonth");
           if (ytdInp) ytdInp.value = currentActiveMonth;
