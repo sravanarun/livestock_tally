@@ -708,6 +708,13 @@
     }
     const parseDateStr = parseDateToObj;
 
+    function getMonthKey(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) return `${parts[2]}-${parts[1]}`; // Returns YYYY-MM
+      return null;
+    }
+
     function getDaysInMonth(monthKey) {
       const parts = monthKey.split('-');
       const y = Number(parts[0]);
@@ -893,7 +900,7 @@
         btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-xs cursor-pointer ${
           isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
         }`;
-        btn.onclick = () => { currentTallyCounter = cnt; renderTallyCounterButtons(); renderTallyDashboard(); };
+        btn.onclick = async () => { currentTallyCounter = cnt; renderTallyCounterButtons(); await renderTallyDashboard(); };
         container.appendChild(btn);
       });
     }
@@ -910,7 +917,7 @@
         btn.className = `text-xs px-3.5 py-1.5 rounded-lg font-semibold transition-all shadow-xs cursor-pointer ${
           isActive ? "bg-amber-500 text-white shadow-amber-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
         }`;
-        btn.onclick = () => { currentSalesCounter = cnt; renderSalesCounterButtons(); renderSalesDesk(); };
+        btn.onclick = async () => { currentSalesCounter = cnt; renderSalesCounterButtons(); await renderSalesDesk(); };
         container.appendChild(btn);
       });
     }
@@ -966,21 +973,21 @@
       const salesProductsContainer = document.getElementById("salesProductsContainer");
 
       if (salesSubTabSummary && salesSubTabProducts) {
-        salesSubTabSummary.onclick = () => {
+        salesSubTabSummary.onclick = async () => {
           activeSalesSubTab = "summary";
           salesSubTabSummary.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
           salesSubTabProducts.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
           if (salesSummaryContainer) salesSummaryContainer.classList.remove("hidden");
           if (salesProductsContainer) salesProductsContainer.classList.add("hidden");
-          renderSalesDesk();
+          await renderSalesDesk();
         };
-        salesSubTabProducts.onclick = () => {
+        salesSubTabProducts.onclick = async () => {
           activeSalesSubTab = "products";
           salesSubTabProducts.className = "px-4 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs cursor-pointer transition-all";
           salesSubTabSummary.className = "px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer transition-all";
           if (salesProductsContainer) salesProductsContainer.classList.remove("hidden");
           if (salesSummaryContainer) salesSummaryContainer.classList.add("hidden");
-          renderSalesDesk();
+          await renderSalesDesk();
         };
       }
 
@@ -1081,8 +1088,8 @@
           await refreshDayList();
           const selTally = document.getElementById("tallyDateSelect");
           if (selTally) selTally.value = fileDate;
-          renderTallyDashboard();
-          renderSalesDesk();
+          await renderTallyDashboard();
+          await renderSalesDesk();
           const liveSt = document.getElementById("liveStatus");
           if (liveSt) { liveSt.textContent = `Loaded ${fileDate}`; liveSt.className = "text-[10px] text-emerald-600 font-bold"; }
         } catch (err) {
@@ -1212,10 +1219,10 @@
 
           await updateMonthlyData("sales", salesByDate, file.name, { sales_items: salesItemsByDate, grn: grnByDate, salesRaw: rawSales });
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          renderSalesDesk();
-          renderDsrDesk();
-          alert(`Successfully updated Sales & GRN for ${currentActiveMonth}!`);
+          await renderTallyDashboard();
+          await renderSalesDesk();
+          await renderDsrDesk();
+          alert(`Successfully updated Sales & GRN!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Sales Report.");
@@ -1282,9 +1289,9 @@
 
           await updateMonthlyData("ghs", ghsByDate, file.name, { ghsRaw: rawGhs });
           updateUploadCardsStatus();
-          renderSalesDesk();
-          renderDsrDesk();
-          alert(`Successfully updated GHS & GGS schemes for ${currentActiveMonth}!`);
+          await renderSalesDesk();
+          await renderDsrDesk();
+          alert(`Successfully updated GHS & GGS schemes!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing GHS report: " + err.message);
@@ -1330,8 +1337,8 @@
           });
           await updateMonthlyData("receipts", receiptsByDate, file.name);
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          alert(`Updated Stock Receipts for ${currentActiveMonth}!`);
+          await renderTallyDashboard();
+          alert(`Updated Stock Receipts!`);
         } catch (err) { alert("Error parsing Stock Receipt report."); }
       };
       reader.readAsArrayBuffer(file);
@@ -1400,8 +1407,8 @@
 
           await updateMonthlyData(subField, receiptsByDate, file.name);
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          alert(`Updated ${typeKey} Receipts for ${currentActiveMonth}!`);
+          await renderTallyDashboard();
+          alert(`Updated ${typeKey} Receipts!`);
         } catch (err) { alert(`Error parsing ${typeKey} Receipt report: ` + err.message); }
       };
       reader.readAsArrayBuffer(file);
@@ -1443,8 +1450,8 @@
           });
           await updateMonthlyData("issues", issuesByDate, file.name);
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          alert(`Updated Stock Issues for ${currentActiveMonth}!`);
+          await renderTallyDashboard();
+          alert(`Updated Stock Issues!`);
         } catch (err) { alert("Error parsing Stock Issue report."); }
       };
       reader.readAsArrayBuffer(file);
@@ -1564,8 +1571,8 @@
 
           await updateMonthlyData("conversions", conversionsByDate, file.name);
           updateUploadCardsStatus();
-          renderTallyDashboard();
-          alert(`Updated Conversions for ${currentActiveMonth}!`);
+          await renderTallyDashboard();
+          alert(`Updated Conversions!`);
         } catch (err) {
           console.error(err);
           alert("Error parsing Conversion report.");
@@ -1575,26 +1582,98 @@
     }
 
     async function updateMonthlyData(fieldName, dataByDate, fileName, extraFields = {}) {
-      const mKey = currentActiveMonth;
-      let mRec = await getMonthRecord(mKey);
-      if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
-      if (mRec.isArchived) throw new Error(`Month ${mKey} is locked and archived.`);
-      
-      if (!mRec.files) mRec.files = {};
-      mRec.files[fieldName] = fileName;
-      mRec[fieldName] = dataByDate;
+      const groupedData = {};
+      const groupedExtra = {};
+      const dictExtras = ['sales_items', 'grn'];
+      const arrayExtras = ['salesRaw', 'ghsRaw'];
 
-      if (!mRec.dsrConfig) mRec.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
-      if (!mRec.salesRaw) mRec.salesRaw = [];
-      if (!mRec.ghsRaw) mRec.ghsRaw = [];
+      // Group incoming dates into their actual respective months
+      Object.keys(dataByDate).forEach(dateStr => {
+         const mKey = getMonthKey(dateStr);
+         if (!mKey) return;
+         if (!groupedData[mKey]) groupedData[mKey] = {};
+         groupedData[mKey][dateStr] = dataByDate[dateStr];
 
-      Object.keys(extraFields).forEach(k => {
-        mRec[k] = extraFields[k];
+         dictExtras.forEach(ex => {
+            if (extraFields[ex] && extraFields[ex][dateStr]) {
+               if (!groupedExtra[mKey]) groupedExtra[mKey] = {};
+               if (!groupedExtra[mKey][ex]) groupedExtra[mKey][ex] = {};
+               groupedExtra[mKey][ex][dateStr] = extraFields[ex][dateStr];
+            }
+         });
       });
 
-      await saveMonthRecord(mRec);
-      currentMonthData = mRec;
+      // Group raw array data 
+      arrayExtras.forEach(ex => {
+         if (extraFields[ex] && Array.isArray(extraFields[ex])) {
+            extraFields[ex].forEach(item => {
+               const dStr = item.date || item.enrolDate;
+               const mKey = getMonthKey(dStr);
+               if (!mKey) return;
+               if (!groupedExtra[mKey]) groupedExtra[mKey] = {};
+               if (!groupedExtra[mKey][ex]) groupedExtra[mKey][ex] = [];
+               groupedExtra[mKey][ex].push(item);
+            });
+         }
+      });
+
+      let skippedArchived = [];
+      let updatedMonths = [];
+
+      // Save the distributed data to the correct month records
+      for (const mKey of Object.keys(groupedData)) {
+         let mRec = await getMonthRecord(mKey);
+         if (!mRec) mRec = { month: mKey, isArchived: false, receipts: {}, gep_receipts: {}, tep_receipts: {}, cutpiece_receipts: {}, issues: {}, conversions: {}, sales: {}, sales_items: {}, grn: {}, ghs: {}, files: {} };
+         
+         if (!mRec.dsrConfig) mRec.dsrConfig = { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
+         if (!mRec.salesRaw) mRec.salesRaw = [];
+         if (!mRec.ghsRaw) mRec.ghsRaw = [];
+         if (!mRec.files) mRec.files = {};
+
+         // CRITICAL: Protect archived history
+         if (mRec.isArchived) {
+            skippedArchived.push(mKey);
+            continue; 
+         }
+
+         mRec.files[fieldName] = fileName;
+         if (!mRec[fieldName]) mRec[fieldName] = {};
+         Object.assign(mRec[fieldName], groupedData[mKey]);
+
+         if (groupedExtra[mKey]) {
+            dictExtras.forEach(ex => {
+               if (groupedExtra[mKey][ex]) {
+                  if (!mRec[ex]) mRec[ex] = {};
+                  Object.assign(mRec[ex], groupedExtra[mKey][ex]);
+               }
+            });
+
+            arrayExtras.forEach(ex => {
+               if (groupedExtra[mKey][ex]) {
+                  const datesBeingUpdated = Object.keys(groupedData[mKey]);
+                  if (!mRec[ex]) mRec[ex] = [];
+                  mRec[ex] = mRec[ex].filter(item => {
+                     const dStr = item.date || item.enrolDate;
+                     return !datesBeingUpdated.includes(dStr);
+                  });
+                  mRec[ex] = mRec[ex].concat(groupedExtra[mKey][ex]);
+               }
+            });
+         }
+
+         await saveMonthRecord(mRec);
+         updatedMonths.push(mKey);
+      }
+
+      // Refresh UI states
+      if (updatedMonths.includes(currentActiveMonth)) {
+         currentMonthData = (await getMonthRecord(currentActiveMonth)) || currentMonthData;
+      }
       await refreshMonthDropdown();
+      
+      if (skippedArchived.length > 0) {
+          console.log(`Protected history: Ignored data for archived months: ${[...new Set(skippedArchived)].join(', ')}`);
+      }
     }
 
     function updateUploadCardsStatus() {
@@ -1724,9 +1803,9 @@
       syncSelect(selSales);
       syncSelect(selDsr);
 
-      renderTallyDashboard();
-      renderSalesDesk();
-      renderDsrDesk();
+      await renderTallyDashboard();
+      await renderSalesDesk();
+      await renderDsrDesk();
     }
 
     function getConsolidatedReceipts(mRec, selectedDate, selectedCounter) {
@@ -1748,7 +1827,7 @@
       return res;
     }
 
-    function renderTallyDashboard() {
+    async function renderTallyDashboard() {
       const selectEl = document.getElementById("tallyDateSelect");
       if (!selectEl) return;
       const selectedDate = selectEl.value;
@@ -1756,6 +1835,10 @@
 
       const resolved = getResolvedDayStock(selectedDate);
       if (!resolved) return resetTallyDashboard();
+
+      // Load the correct month dynamically instead of using currentMonthData
+      const monthKey = getMonthKey(selectedDate);
+      const mRec = (await getMonthRecord(monthKey)) || {};
 
       const hasOpening = !!resolved.opening;
       const hasClosing = resolved.closingType !== "none";
@@ -1812,7 +1895,6 @@
         closeData = resolved.closingCounters[currentTallyCounter] || null;
       }
 
-      const mRec = currentMonthData || {};
       const recDate = getConsolidatedReceipts(mRec, selectedDate, currentTallyCounter);
       const grnDate = (mRec.grn && mRec.grn[selectedDate] && mRec.grn[selectedDate][currentTallyCounter]) ? mRec.grn[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
       const issDate = (mRec.issues && mRec.issues[selectedDate] && mRec.issues[selectedDate][currentTallyCounter]) ? mRec.issues[selectedDate][currentTallyCounter] : { qty: 0, categories: {} };
@@ -2077,7 +2159,7 @@
       if (c) c.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">Upload a live stock report to begin</div>`;
     }
 
-    function renderSalesDesk() {
+    async function renderSalesDesk() {
       const selectEl = document.getElementById("salesDateSelect");
       if (!selectEl) return;
       const selectedDate = selectEl.value;
@@ -2088,16 +2170,17 @@
         if (prodEl) prodEl.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">No dates recorded</div>`;
         return;
       }
-      if (activeSalesSubTab === "summary") renderSalesSummaryCards(selectedDate);
-      else renderSalesProductsDetail(selectedDate);
+      if (activeSalesSubTab === "summary") await renderSalesSummaryCards(selectedDate);
+      else await renderSalesProductsDetail(selectedDate);
     }
 
-    function renderSalesSummaryCards(selectedDate) {
+    async function renderSalesSummaryCards(selectedDate) {
       const container = document.getElementById("salesSummaryContainer");
       if (!container) return;
       container.innerHTML = "";
 
-      const mRec = currentMonthData || {};
+      const monthKey = getMonthKey(selectedDate);
+      const mRec = (await getMonthRecord(monthKey)) || {};
       const salesData = mRec.sales || {};
       const ghsData = mRec.ghs || {};
       const baselineMap = (currentYtdBaseline && currentYtdBaseline.baselines) ? currentYtdBaseline.baselines : defaultYtdPrior;
@@ -2166,11 +2249,12 @@
       container.appendChild(cardsGrid);
     }
 
-    function renderSalesProductsDetail(selectedDate) {
+    async function renderSalesProductsDetail(selectedDate) {
       const container = document.getElementById("salesProductsContainer");
       if (!container) return;
       container.innerHTML = "";
-      const mRec = currentMonthData || {};
+      const monthKey = getMonthKey(selectedDate);
+      const mRec = (await getMonthRecord(monthKey)) || {};
       const salesItemsByDate = mRec.sales_items || {};
       const dateItems = salesItemsByDate[selectedDate] || {};
       const countersToShow = currentSalesCounter === "ALL" ? coreCounters : [currentSalesCounter];
@@ -2410,13 +2494,14 @@
        return html;
     }
 
-    function renderDsrDesk() {
+    async function renderDsrDesk() {
       const selectEl = document.getElementById("dsrDateSelect");
       if (!selectEl) return;
       const dateStr = selectEl.value;
       if (!dateStr) return;
 
-      const mRec = currentMonthData || {};
+      const monthKey = getMonthKey(dateStr);
+      const mRec = (await getMonthRecord(monthKey)) || { month: monthKey };
       const config = mRec.dsrConfig || { rsos: [], targets: {}, turns: {}, ccaf: {}, np: {} };
 
       // Sale Report (Daily + MTD)
@@ -2472,7 +2557,7 @@
        currentMonthData.dsrConfig.rsos = lines;
        await saveMonthRecord(currentMonthData);
        document.getElementById("dsrRsoModal").classList.add("hidden");
-       renderDsrDesk();
+       await renderDsrDesk();
     }
 
     function openDsrTargetModal() {
@@ -2504,7 +2589,7 @@
        });
        await saveMonthRecord(currentMonthData);
        document.getElementById("dsrTargetModal").classList.add("hidden");
-       renderDsrDesk();
+       await renderDsrDesk();
     }
 
     function openDsrTurnModal() {
@@ -2527,7 +2612,7 @@
        });
        await saveMonthRecord(currentMonthData);
        document.getElementById("dsrTurnModal").classList.add("hidden");
-       renderDsrDesk();
+       await renderDsrDesk();
     }
 
     function openDailyEntryModal(type) {
@@ -2560,7 +2645,7 @@
        });
        await saveMonthRecord(currentMonthData);
        document.getElementById("dsrDailyEntryModal").classList.add("hidden");
-       renderDsrDesk();
+       await renderDsrDesk();
     }
 
     // --- Excel Copy Handlers ---
@@ -2695,12 +2780,12 @@
         else if (subKey === "ghs") { mRec.ghs = {}; mRec.ghsRaw = []; }
         else mRec[subKey] = {};
         if (mRec.files) delete mRec.files[subKey];
-        await saveMonthRecord(mRec); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+        await saveMonthRecord(mRec); await refreshMonthDropdown(); renderManageList(); await renderTallyDashboard(); await renderSalesDesk(); await renderDsrDesk();
       }
     };
     window.handleDeleteEntireMonth = async function(monthStr) {
       if (!confirm(`Delete all transaction reports for ${monthStr}?`)) return;
-      await deleteMonthRecord(monthStr); await refreshMonthDropdown(); renderManageList(); renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+      await deleteMonthRecord(monthStr); await refreshMonthDropdown(); renderManageList(); await renderTallyDashboard(); await renderSalesDesk(); await renderDsrDesk();
     };
 
     function setupEventListeners() {
@@ -2748,11 +2833,13 @@
       const selTally = document.getElementById("tallyDateSelect");
       const selSales = document.getElementById("salesDateSelect");
       const selDsr = document.getElementById("dsrDateSelect");
-      const syncRenderAll = (val) => {
+      const syncRenderAll = async (val) => {
           if (selTally) selTally.value = val;
           if (selSales) selSales.value = val;
           if (selDsr) selDsr.value = val;
-          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+          await renderTallyDashboard(); 
+          await renderSalesDesk(); 
+          await renderDsrDesk();
       };
       if (selTally) selTally.onchange = (e) => syncRenderAll(e.target.value);
       if (selSales) selSales.onchange = (e) => syncRenderAll(e.target.value);
@@ -2773,7 +2860,9 @@
           if (ytdInp) ytdInp.value = currentActiveMonth;
           await initYtdBaseline();
           updateUploadCardsStatus();
-          renderTallyDashboard(); renderSalesDesk(); renderDsrDesk();
+          await renderTallyDashboard(); 
+          await renderSalesDesk(); 
+          await renderDsrDesk();
         };
       }
 
@@ -2810,7 +2899,7 @@
           currentYtdBaseline = { month: targetMonth, baselines: baselines };
           await saveYtdBaseline(currentYtdBaseline);
           if (ytdModal) ytdModal.classList.add("hidden");
-          renderSalesDesk();
+          await renderSalesDesk();
           alert(`Successfully saved YTD baseline for ${targetMonth}!`);
         };
       }
